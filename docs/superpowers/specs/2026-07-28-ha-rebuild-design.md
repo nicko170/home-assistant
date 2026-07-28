@@ -144,7 +144,63 @@ each sensor before wiring it.
 - Individual devices → MSB `sensor.msb_meter_energy_sub01..16`, plus each power monitor's
   `total_energy`
 
-Tariff: Origin fixed/TOU rates entered manually.
+**Tariff:** Origin, entered manually with **placeholder rates** for now; the user will supply real
+c/kWh figures shortly. Structured so the numbers are a single edit, and so a later move to Amber is
+a config change rather than a rebuild.
+
+**Feed-in tariff is 0.** This is a defining constraint, not a detail — it is the reason the battery
+exists. Every exported kWh is given away for nothing, so the system's goal is to export as little
+as possible.
+
+Consequences carried through the rest of this design:
+
+- **Export is waste, not income.** The Energy views must present exported energy as loss, never as
+  earnings. Its true cost is `exported kWh × import rate` — energy given away that later has to be
+  bought back.
+- **Self-consumption is the primary KPI**, defined as `(production − export) / production`. It
+  should be the headline energy metric on the Overview dashboard.
+- **Load shifting into surplus is the highest-value automation available** — see Phase 3. Running a
+  load on surplus that would otherwise be exported at $0 is a direct saving at the full import rate.
+### 0.4.1 Inverter control surface (verified against the register profile)
+
+The configured profile is `sofar_g3.yaml`. Inspecting it directly, it exposes exactly **three**
+writable controls — confirmed against the entity registry:
+
+| Control | Entity | Values |
+|---|---|---|
+| Export Surplus Limitation | `select.inverter_export_surplus_limitation` | `Disabled` *(current)* / `Enabled` / `Balanced` |
+| Export Surplus Power | `number.inverter_export_surplus_power` | watts, scale 100 |
+| Storage Control Mode | `select.inverter_storage_control_mode` | `Self Use` *(current)*, `Time of Use`, `Optimized Revenue`, `Passive`, `Peak Shaving`, `Off-Grid`, `Generator`, `Export Priority` |
+
+**Available immediately:**
+
+- **Zero-export enforcement** — set Limitation `Enabled` and Power `0` to force all generation into
+  the battery and house loads. With FIT = 0 this is the correct default posture, exposed as a
+  dashboard toggle.
+- **Grid-charge window control** — `Time of Use` is selectable today. The user's target is a
+  free-power window (planned 11:00–15:00 on a future energy plan). The charge *schedule* itself
+  lives in registers `0x1113`/`0x1114`, which `sofar_g3.yaml` does **not** map.
+
+**Approach A (adopt now):** configure the 11:00–15:00 charge window once in the SolarMan app, then
+have HA toggle Storage Control Mode between `Self Use` and `Time of Use`. This delivers the
+requested on/off control with no profile change and no write risk.
+
+**Approach B (evaluate separately):** switch to `sofar_g3hyd.yaml`, which maps
+`Timed Charge Start`/`End` (`0x1113`/`0x1114`), `Timed Charge Power` (`0x1117`/`0x1118`),
+`Timed Control` (`0x1112`) and timed discharge, making the window fully HA-controlled.
+
+**Approach B is gated on confirming the physical inverter model.** HA reports model "G3" only
+because the profile declares it; that is not evidence of the hardware. Writing incorrect registers
+to a battery inverter is a serious failure mode — misreads are harmless, miswrites are not. If
+adopted, B must happen in Phase 0 *before* dashboards are built, because changing profiles renames
+entities.
+
+**Forecast-gated grid charging** (Phase 3, depends on the above): using the existing
+`forecast_solar` integration, if tomorrow's forecast production will not refill the battery, switch
+to `Time of Use` so it charges during the free window; otherwise remain on `Self Use` and let solar
+do it. `Export Priority` mode must never be selected while FIT = 0.
+
+Do not change any inverter setting before self-consumption measurement exists to judge the effect.
 
 ### 0.5 Cleanup
 
@@ -229,7 +285,8 @@ handled with `decluttering-card` templates, not copy-paste.
 
 ### Overview
 
-At-a-glance home state. Presence badges (Nick, Elle), current house power, battery SoC, solar now.
+At-a-glance home state. Presence badges (Nick, Elle), current house power, battery SoC, solar now,
+and **self-consumption %** as the headline energy metric (see 0.4 — feed-in tariff is 0).
 `power-flow-card-plus` as the hero. Laundry status with last-cycle summary. Doorbell thumbnail.
 An alerts section listing anything unavailable or faulted, built with `auto-entities` so new
 problems appear without editing the dashboard.
@@ -259,8 +316,16 @@ signal per ESPHome device, MSB meter reachability, integration errors, pending u
 - **BOM weather + rain radar** — Bureau of Meteorology integration and a radar card, useful next to
   solar forecasting.
 - **Actionable doorbell notifications** — press sends a snapshot with action buttons.
-- **Solar-surplus laundry** — when the battery is full and the system is exporting, run the dryer on
-  free power using the switchable plugs. Requires Phases 0–1 complete.
+- **Solar-surplus laundry — the highest-value item in this design.** Because the feed-in tariff is
+  0, surplus being exported is worth nothing, while the same energy consumed on-site saves the full
+  import rate. When the battery is full (or near full) and the system is exporting above a
+  threshold, run the dryer via `switch.power_monitor_4_f27381_switch`.
+
+  Start conservative: **notify with an actionable "run it now" button** rather than switching
+  automatically. Appliances starting unattended is a safety and household-annoyance question, and
+  the dryer should not start because a cloud passed. Promote to fully automatic only once the
+  surplus signal has been observed to be stable, and always gate on a minimum sustained surplus
+  duration rather than an instantaneous reading. Requires Phases 0–1 complete.
 - **Presence-aware camera alerts** — suppress motion spam when home.
 - **Mac mini health sensor** — push uptime and TIME_WAIT count from the Mac into HA and alert at
   ~45 days uptime, ahead of the macOS 49.7-day TCP clock overflow that caused the outage on
@@ -286,4 +351,9 @@ signal per ESPHome device, MSB meter reachability, integration errors, pending u
 - Rotate camera credentials (planned for the evening of 2026-07-28) and update `secrets.yaml`.
 - Plex and Roborock reauthentication.
 - Power-cycle the MSB meter if it does not rejoin wifi.
-- Origin tariff rates for the energy dashboard.
+- Origin tariff rates — **placeholder values used for now**; real c/kWh to follow. Feed-in tariff is
+  confirmed **0**.
+- **Physical inverter model number** (from the inverter label or the SolarMan app) — required before
+  Approach B in 0.4.1 can be considered.
+- Configure the 11:00–15:00 charge window in the SolarMan app if Approach A is taken.
+- Confirm whether the free-power energy plan has been switched to, and its exact window.
