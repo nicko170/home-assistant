@@ -1,0 +1,117 @@
+# Garage door - replaces the lost HomeSpan firmware.
+#
+# This device does two jobs:
+#   1. pulses the door relay on GPIO 16 (momentary, like a button press)
+#   2. acts as HA's Bluetooth proxy - it sits about a metre from the BTHome
+#      door sensor, and was the only ESP32 available after the Actron went
+#      offline. Restoring this also restores HA's only Bluetooth adapter.
+#
+# GPIO 16 was found empirically: the original sketch was lost, so a temporary
+# discovery firmware exposed every safe candidate pin as a momentary switch
+# and the relay was identified by ear.
+#
+# Position is read from the BTHome door sensor rather than inferred from
+# commands, so it stays correct when the door is operated by its physical
+# remote. Note this creates a deliberate boot-time circularity: the sensor
+# only reports because this device is its proxy, so the cover reads closed
+# for the first minute after a cold start.
+
+substitutions:
+  relay_pin: GPIO16
+
+esphome:
+  name: garage-door
+  friendly_name: Garage Door
+
+esp32:
+  # HomeSpan reported board=esp32da (Arduino's name for the dual-antenna
+  # WROOM-DA). PlatformIO does not know that name; the silicon is a plain
+  # ESP32 so esp32dev is correct.
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret garage_api_key
+
+ota:
+  - platform: esphome
+    password: !secret garage_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  manual_ip:
+    static_ip: 192.168.15.17
+    gateway: 192.168.15.1
+    subnet: 255.255.255.0
+    dns1: 192.168.15.1
+
+# Kept so the device stays diagnosable from a browser without HA.
+web_server:
+  port: 80
+
+# Restores HA's Bluetooth adapter, lost when the Actron ESP32 went offline.
+# This is what brings binary_sensor.garage_door - and the other BTHome
+# devices in range - back to life.
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true
+
+# The physical relay. internal: true keeps it out of HA - the cover owns it,
+# so nobody can leave the contact energised by toggling a stray switch.
+switch:
+  - platform: gpio
+    pin: ${relay_pin}
+    id: relay
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+# Door position, mirrored back from the BTHome sensor in HA.
+binary_sensor:
+  - platform: homeassistant
+    id: door_is_open
+    entity_id: binary_sensor.garage_door
+    internal: true
+
+cover:
+  - platform: template
+    name: Door
+    id: garage_cover
+    device_class: garage
+    optimistic: false
+    assumed_state: false
+    lambda: |-
+      if (id(door_is_open).state) {
+        return COVER_OPEN;
+      }
+      return COVER_CLOSED;
+    # A garage opener takes a single button press for open, close and stop -
+    # the controller decides what that means based on its current state.
+    open_action:
+      - switch.turn_on: relay
+      - delay: 400ms
+      - switch.turn_off: relay
+    close_action:
+      - switch.turn_on: relay
+      - delay: 400ms
+      - switch.turn_off: relay
+    stop_action:
+      - switch.turn_on: relay
+      - delay: 400ms
+      - switch.turn_off: relay
+
+sensor:
+  - platform: wifi_signal
+    name: WiFi signal
+    update_interval: 120s
+  - platform: uptime
+    name: Uptime
