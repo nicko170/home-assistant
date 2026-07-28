@@ -133,9 +133,14 @@ reservations are needed.
 ### 0.4 Energy Dashboard configuration
 
 Configure HA's **built-in** Energy Dashboard rather than recreating it by hand. Use the
-`sensor.inverter_total_*` series, which carry `state_class: total_increasing`; the `today_*`
-equivalents reset daily and behave incorrectly as energy dashboard sources. Verify `state_class` on
-each sensor before wiring it.
+`sensor.inverter_total_*` series.
+
+> **Correction (2026-07-28).** An earlier version of this spec claimed the `today_*` sensors "reset
+> daily and behave incorrectly as energy dashboard sources". **That was wrong.** Both series carry
+> `state_class: total_increasing`, and HA handles the daily reset correctly as a counter reset —
+> `today_*` was a perfectly valid configuration. `total_*` is kept because lifetime counters avoid
+> midnight-rollover edge cases, not because `today_*` was broken. Verify `state_class` before
+> wiring any sensor, and do not change a working configuration without a verified reason.
 
 - Grid consumption → `sensor.inverter_total_energy_import`
 - Return to grid → `sensor.inverter_total_energy_export`
