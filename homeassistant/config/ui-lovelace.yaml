@@ -153,6 +153,33 @@ views:
 
       # ---------------------------------------------------------------
       - type: grid
+        cards:
+          - type: heading
+            heading: Garage
+            heading_style: title
+            icon: mdi:garage
+
+          - type: tile
+            entity: cover.garage_door_door
+            name: Garage door
+            features:
+              - type: cover-open-close
+
+          - type: tile
+            entity: binary_sensor.garage_door
+            name: Door sensor
+
+          - type: picture-entity
+            entity: camera.garage_mainstream
+            camera_view: auto
+            show_name: false
+            show_state: false
+            tap_action:
+              action: navigate
+              navigation_path: /home-cameras/live
+
+      # ---------------------------------------------------------------
+      - type: grid
         column_span: 3
         cards:
           - type: heading

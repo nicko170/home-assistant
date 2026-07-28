@@ -106,6 +106,35 @@ views:
       - type: grid
         cards:
           - type: heading
+            heading: Garage door
+            heading_style: title
+            icon: mdi:garage
+          # The ESP32 here is also HA's only Bluetooth proxy - if it goes
+          # offline, every BTHome sensor goes with it. That is exactly what
+          # happened when the Actron controller went down.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: cover.garage_door_door
+                name: Door
+              - entity: binary_sensor.garage_door
+                name: Position sensor
+              - entity: sensor.garage_battery
+                name: Sensor battery
+              - entity: sensor.garage_voltage
+                name: Sensor voltage
+              - entity: sensor.garage_temperature
+                name: Garage temperature
+              - entity: sensor.garage_humidity
+                name: Garage humidity
+              - entity: sensor.garage_door_wifi_signal
+                name: ESP32 wifi
+              - entity: sensor.garage_door_uptime
+                name: ESP32 uptime
+
+      - type: grid
+        cards:
+          - type: heading
             heading: Device IP addresses
             heading_style: title
             icon: mdi:ip-network
