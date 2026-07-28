@@ -725,3 +725,5 @@ All must hold before Phase 1 begins:
 - Inverter profile switch to `sofar_g3hyd.yaml` — blocked on the user confirming the physical model
 - `Time of Use` / export-limit automation — Phase 3, and only after self-consumption measurement exists
 - Node-RED and the stale `scrypted`/`cloudflared`/`watchtower` compose services — user decision pending
+
+<!-- gitops pipeline verified 2026-07-28 17:39:09 -->
