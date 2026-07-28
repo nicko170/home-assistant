@@ -1,27 +1,41 @@
-# secrets and tokens
+# ---- secrets (never commit) ----
 secrets.yaml
-homeassistant/config/secrets.yaml
-.storage/
-homeassistant/config/.storage/
-.cloud/
-homeassistant/config/.cloud/
+**/secrets.yaml
+*.bak
+*.bak.*
 
-# runtime state
+# ---- service volumes (bulk runtime data, not config) ----
+scrypted/
+nodered/
+
+# ---- home assistant runtime state ----
+.storage/
+**/.storage/
+.cloud/
+**/.cloud/
+.ha_run.lock
+**/.ha_run.lock
 *.db
 *.db-shm
 *.db-wal
 *.log
 *.log.*
 *.log.fault
-.ha_run.lock
 homeassistant/config/backups/
 homeassistant/config/deps/
 homeassistant/config/tts/
 
-# third-party / HACS managed
+# ---- third-party, package-managed ----
+# HACS-installed integrations and frontend cards
 homeassistant/config/custom_components/
 homeassistant/config/www/community/
+# external ESPHome library, cloned from github.com/awulf/Actron485
+homeassistant/config/Actron485/
 
-# backups may contain pre-sanitisation secrets
-*.bak
-*.bak.*
+# ---- esphome build artefacts ----
+esphome/config/.esphome/
+homeassistant/config/esphome/.esphome/
+
+# docker-compose secrets
+.env
+.env.*

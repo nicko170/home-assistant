@@ -1,0 +1,43 @@
+- id: '1756041019076'
+  alias: Water Front Gardens
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    hours: '16'
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: af72186bf651d12d967841ff21aeb5fa
+    entity_id: 3259d6fc4370de6de89e434779493282
+    domain: switch
+  - delay:
+      hours: 1
+      minutes: 0
+      seconds: 0
+      milliseconds: 0
+  - type: turn_off
+    device_id: af72186bf651d12d967841ff21aeb5fa
+    entity_id: 3259d6fc4370de6de89e434779493282
+    domain: switch
+  mode: single
+- id: '1756200632989'
+  alias: Turn TV on with Apple TV
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: 63da27bb84d9fa488f224cff0ec53b7a
+    entity_id: 4196fa171dd1d12ba4773d475e6ac0bc
+    domain: remote
+    trigger: device
+  conditions:
+  - condition: device
+    type: is_off
+    device_id: 5fd349f126883857d0184725988969f1
+    entity_id: 453e9663d560fc615464f71478260bb8
+    domain: remote
+  actions:
+  - type: turn_on
+    device_id: 5fd349f126883857d0184725988969f1
+    entity_id: 453e9663d560fc615464f71478260bb8
+    domain: remote
+  mode: single
