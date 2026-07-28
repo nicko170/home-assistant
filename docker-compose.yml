@@ -21,26 +21,6 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
-
-  # ============================================================================
-  # NODE-RED
-  # ============================================================================
-  # Access: http://<host-ip>:1880
-  # Connect to HA: http://localhost:8123 or http://<host-ip>:8123
-  # Install palette: node-red-contrib-home-assistant-websocket
-  nodered:
-    container_name: nodered
-    image: nodered/node-red:latest
-    volumes:
-      - ./nodered/data:/data
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - TZ=Australia/Sydney
-    restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - homeassistant
-
   # ============================================================================
   # ESPHOME
   # ============================================================================

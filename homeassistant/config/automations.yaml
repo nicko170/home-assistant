@@ -1,25 +1,3 @@
-- id: '1756041019076'
-  alias: Water Front Gardens
-  description: ''
-  triggers:
-  - trigger: time_pattern
-    hours: '16'
-  conditions: []
-  actions:
-  - type: turn_on
-    device_id: af72186bf651d12d967841ff21aeb5fa
-    entity_id: 3259d6fc4370de6de89e434779493282
-    domain: switch
-  - delay:
-      hours: 1
-      minutes: 0
-      seconds: 0
-      milliseconds: 0
-  - type: turn_off
-    device_id: af72186bf651d12d967841ff21aeb5fa
-    entity_id: 3259d6fc4370de6de89e434779493282
-    domain: switch
-  mode: single
 - id: '1756200632989'
   alias: Turn TV on with Apple TV
   description: ''
