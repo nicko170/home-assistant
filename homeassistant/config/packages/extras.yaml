@@ -1,0 +1,213 @@
+# Extras: host health alerting, actionable doorbell, and solar-surplus
+# load shifting.
+#
+# Host health sensors are PUSHED from the mac mini by ~/ha-deploy/host-health.sh
+# (launchd, every 5 min) because neither uptime nor TIME_WAIT is visible from
+# inside the container. See net.npratley.host-health.
+
+input_boolean:
+  solar_surplus_alerts:
+    name: Solar surplus alerts
+    icon: mdi:solar-power
+    initial: true
+  camera_alerts_when_home:
+    name: Camera alerts even when home
+    icon: mdi:cctv
+    initial: false
+
+automation:
+  # ===================================================================
+  # HOST HEALTH - prevent a repeat of the 2026-07-28 outage
+  # ===================================================================
+  # macOS freezes its kernel TCP clock at 49d17h uptime. Everything outbound
+  # then fails while ping keeps working, so it looks like the devices died.
+  # Warn with a week of headroom, then daily once it is urgent.
+  - id: extras_macmini_tcp_overflow_warning
+    alias: "Host: mac mini approaching TCP clock overflow"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.macmini_tcp_days_left
+        below: 7
+    conditions:
+      - condition: template
+        value_template: "{{ states('sensor.macmini_tcp_days_left') | int(99) >= 0 }}"
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Mac mini needs a reboot"
+          message: >-
+            {{ states('sensor.macmini_tcp_days_left') }} days until the macOS
+            TCP clock overflow. After that every outbound connection fails and
+            HA loses all devices. Reboot before then.
+          data:
+            tag: macmini_tcp
+            group: host
+
+  # TIME_WAIT climbing monotonically is the leading indicator - it rises for
+  # days before anything visibly breaks.
+  - id: extras_macmini_time_wait_high
+    alias: "Host: mac mini TIME_WAIT sockets climbing"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.macmini_ephemeral_used
+        above: 40
+        for: "00:30:00"
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Mac mini socket pressure"
+          message: >-
+            {{ states('sensor.macmini_time_wait') }} sockets in TIME_WAIT
+            ({{ states('sensor.macmini_ephemeral_used') }}% of the ephemeral
+            range). If this keeps climbing the TCP clock has likely frozen -
+            reboot.
+          data:
+            tag: macmini_sockets
+            group: host
+
+  - id: extras_macmini_stale
+    alias: "Host: mac mini stopped reporting"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.macmini_uptime_days
+        to: unavailable
+        for: "00:30:00"
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Mac mini health check stopped"
+          message: >-
+            No host health push for 30 minutes. Either the launchd job died or
+            the host is in trouble.
+          data:
+            tag: macmini_stale
+            group: host
+
+  # ===================================================================
+  # DOORBELL - actionable notification with a snapshot
+  # ===================================================================
+  - id: extras_doorbell_pressed
+    alias: "Doorbell: pressed"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.doorbell_visitor
+        to: "on"
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Someone's at the door"
+          message: "Doorbell pressed"
+          data:
+            image: /api/camera_proxy/camera.doorbell_fluent
+            tag: doorbell
+            group: doorbell
+            actions:
+              - action: URI
+                title: View live
+                uri: /home-cameras/doorbell
+      - action: notify.mobile_app_iphone
+        data:
+          title: "Someone's at the door"
+          message: "Doorbell pressed"
+          data:
+            image: /api/camera_proxy/camera.doorbell_fluent
+            tag: doorbell
+            group: doorbell
+            actions:
+              - action: URI
+                title: View live
+                uri: /home-cameras/doorbell
+
+  # Person detected at the door without a press - lower urgency, and
+  # suppressed while someone is home unless explicitly enabled.
+  - id: extras_doorbell_person
+    alias: "Doorbell: person detected"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.doorbell_person
+        to: "on"
+        for: "00:00:05"
+    conditions:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.camera_alerts_when_home
+            state: "on"
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: person.admin
+                state: home
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Person at the front door"
+          message: "Detected at {{ now().strftime('%H:%M') }}"
+          data:
+            image: /api/camera_proxy/camera.doorbell_fluent
+            tag: doorbell_person
+            group: doorbell
+
+  # ===================================================================
+  # SOLAR SURPLUS - the highest-value automation here, because FIT = 0
+  # ===================================================================
+  # Exported energy earns nothing, while the same energy consumed on site
+  # saves the full import rate. So when the battery is full and we are
+  # exporting, running the dryer is effectively free.
+  #
+  # Deliberately NOTIFIES rather than switching the appliance on. Starting a
+  # dryer unattended is a safety and household call, not one to automate on
+  # day one. Requires a sustained surplus so a passing cloud cannot trigger it.
+  - id: extras_solar_surplus_available
+    alias: "Solar: surplus available for laundry"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.inverter_grid_power
+        below: -1000
+        for: "00:15:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.solar_surplus_alerts
+        state: "on"
+      - condition: numeric_state
+        entity_id: sensor.inverter_battery
+        above: 90
+      - condition: state
+        entity_id: input_select.dryer_state
+        state: idle
+      - condition: time
+        after: "08:00:00"
+        before: "16:00:00"
+    actions:
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Free power available"
+          message: >-
+            Battery at {{ states('sensor.inverter_battery') }}% and exporting
+            {{ (states('sensor.inverter_grid_power') | float(0) | abs) | round(0) }} W
+            for nothing. Good time to run the dryer.
+          data:
+            tag: solar_surplus
+            group: solar
+            actions:
+              - action: URI
+                title: Open Power
+                uri: /home-energy/now
+
+template:
+  - sensor:
+      - name: Mac mini TCP overflow date
+        unique_id: macmini_tcp_overflow_date
+        icon: mdi:calendar-alert
+        availability: >
+          {{ states('sensor.macmini_tcp_days_left') not in
+             ['unknown', 'unavailable', 'none'] }}
+        state: >
+          {{ (now() + timedelta(days=states('sensor.macmini_tcp_days_left') | int(0)))
+             .strftime('%Y-%m-%d') }}
