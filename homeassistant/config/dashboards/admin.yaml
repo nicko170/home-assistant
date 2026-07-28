@@ -177,9 +177,9 @@ views:
               - entity: camera.hik_front_left_mainstream
                 name: Hik front left (.241) ge-0/0/8
               - entity: camera.garage_mainstream
-                name: Garage (.242) ge-0/0/7
+                name: ".242 ge-0/0/7 - named Garage but NOT the garage view"
               - entity: camera.hik_244_mainstream
-                name: Hik 244 (.244) ge-0/0/9
+                name: "Garage (.244) ge-0/0/9 - the actual garage camera"
               - entity: camera.front_left_fluent
                 name: Reolink CX820 (.245) ge-0/0/4
 

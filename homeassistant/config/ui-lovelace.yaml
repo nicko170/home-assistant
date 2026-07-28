@@ -169,8 +169,11 @@ views:
             entity: binary_sensor.garage_door_position
             name: Door sensor
 
+          # NOTE: the camera actually overlooking the garage is the .244
+          # Hikvision, despite .242 self-reporting its channel name as
+          # "Garage". The device names are misleading - see Admin.
           - type: picture-entity
-            entity: camera.garage_mainstream
+            entity: camera.hik_244_mainstream
             camera_view: auto
             show_name: false
             show_state: false
