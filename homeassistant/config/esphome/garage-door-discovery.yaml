@@ -20,7 +20,11 @@ esphome:
   friendly_name: Garage Door
 
 esp32:
-  board: esp32da
+  # HomeSpan's mDNS reported board=esp32da, which is Arduino's name for the
+  # dual-antenna ESP32-WROOM-DA. ESPHome/PlatformIO does not know that name;
+  # the silicon is a plain ESP32, so the generic esp32dev board is correct
+  # (same as the Actron controller config).
+  board: esp32dev
   framework:
     type: arduino
 
