@@ -1,0 +1,300 @@
+# Circuits dashboard - the 16 MSB sub-circuits.
+#
+# Everything here is built on the sub-circuit channels, which are verified
+# against the inverter's load register (see packages/msb.yaml for the numbers).
+# The meter's own main A/B/C channels are deliberately NOT used anywhere on this
+# page - phase A correlates with nothing and B/C are zeroed by 1_phase mode.
+
+title: Circuits
+views:
+  - title: Circuits
+    path: circuits
+    type: sections
+    max_columns: 3
+    icon: mdi:home-lightning-bolt
+    badges:
+      - type: entity
+        entity: sensor.circuits_total_power
+        name: House
+      - type: entity
+        entity: sensor.solar_pv_power
+        name: Solar
+      - type: entity
+        entity: sensor.inverter_grid_power
+        name: Grid
+      - type: entity
+        entity: sensor.inverter_battery
+        name: Battery
+
+    sections:
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Where the power is going
+            heading_style: title
+            icon: mdi:transit-connection-variant
+
+          - type: custom:sankey-chart
+            show_names: true
+            show_states: true
+            show_icons: false
+            unit_prefix: k
+            round: 2
+            min_box_height: 4
+            min_box_distance: 3
+            height: 420
+            sections:
+              # Sources feeding the house.
+              - entities:
+                  - entity_id: sensor.solar_pv_power
+                    name: Solar
+                    color: var(--warning-color)
+                    children:
+                      - sensor.circuits_total_power
+                      - sensor.flow_battery_charge
+                      - sensor.flow_grid_export
+                  - entity_id: sensor.flow_grid_import
+                    name: Grid import
+                    color: var(--error-color)
+                    children:
+                      - sensor.circuits_total_power
+                  - entity_id: sensor.flow_battery_discharge
+                    name: Battery out
+                    color: var(--success-color)
+                    children:
+                      - sensor.circuits_total_power
+              # The house total, plus the two non-house sinks.
+              - entities:
+                  - entity_id: sensor.circuits_total_power
+                    name: House
+                    children:
+                      - sensor.msb_meter_power_sub01
+                      - sensor.msb_meter_power_sub02
+                      - sensor.msb_meter_power_sub03
+                      - sensor.msb_meter_power_sub04
+                      - sensor.msb_meter_power_sub05
+                      - sensor.msb_meter_power_sub06
+                      - sensor.msb_meter_power_sub07
+                      - sensor.msb_meter_power_sub08
+                      - sensor.msb_meter_power_sub09
+                      - sensor.msb_meter_power_sub10
+                      - sensor.msb_meter_power_sub11
+                      - sensor.msb_meter_power_sub12
+                      - sensor.msb_meter_power_sub13
+                      - sensor.msb_meter_power_sub14
+                      - sensor.msb_meter_power_sub15
+                      - sensor.msb_meter_power_sub16
+                  - entity_id: sensor.flow_battery_charge
+                    name: Battery in
+                    color: var(--success-color)
+                  - entity_id: sensor.flow_grid_export
+                    name: Export
+                    color: var(--error-color)
+              # The 16 circuits themselves.
+              - entities:
+                  - entity_id: sensor.msb_meter_power_sub01
+                    name: Circuit 01
+                  - entity_id: sensor.msb_meter_power_sub02
+                    name: Circuit 02
+                  - entity_id: sensor.msb_meter_power_sub03
+                    name: Circuit 03
+                  - entity_id: sensor.msb_meter_power_sub04
+                    name: Circuit 04
+                  - entity_id: sensor.msb_meter_power_sub05
+                    name: Circuit 05
+                  - entity_id: sensor.msb_meter_power_sub06
+                    name: Circuit 06
+                  - entity_id: sensor.msb_meter_power_sub07
+                    name: Circuit 07
+                  - entity_id: sensor.msb_meter_power_sub08
+                    name: Circuit 08
+                  - entity_id: sensor.msb_meter_power_sub09
+                    name: Circuit 09
+                  - entity_id: sensor.msb_meter_power_sub10
+                    name: Circuit 10 (aircon)
+                  - entity_id: sensor.msb_meter_power_sub11
+                    name: Circuit 11
+                  - entity_id: sensor.msb_meter_power_sub12
+                    name: Circuit 12
+                  - entity_id: sensor.msb_meter_power_sub13
+                    name: Circuit 13
+                  - entity_id: sensor.msb_meter_power_sub14
+                    name: Circuit 14
+                  - entity_id: sensor.msb_meter_power_sub15
+                    name: Circuit 15
+                  - entity_id: sensor.msb_meter_power_sub16
+                    name: Circuit 16
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Circuit power (24h)
+            heading_style: title
+            icon: mdi:chart-areaspline
+
+          - type: custom:apexcharts-card
+            graph_span: 24h
+            stacked: true
+            header:
+              show: true
+              title: Stacked circuit draw
+              show_states: false
+            apex_config:
+              chart:
+                height: 340
+              legend:
+                show: true
+                fontSize: 11px
+              stroke:
+                width: 0
+              dataLabels:
+                enabled: false
+            all_series_config:
+              type: area
+              curve: smooth
+              opacity: 0.75
+              stroke_width: 0
+              group_by:
+                func: avg
+                duration: 10min
+            series:
+              - entity: sensor.msb_meter_power_sub01
+                name: C01
+              - entity: sensor.msb_meter_power_sub02
+                name: C02
+              - entity: sensor.msb_meter_power_sub03
+                name: C03
+              - entity: sensor.msb_meter_power_sub04
+                name: C04
+              - entity: sensor.msb_meter_power_sub05
+                name: C05
+              - entity: sensor.msb_meter_power_sub06
+                name: C06
+              - entity: sensor.msb_meter_power_sub07
+                name: C07
+              - entity: sensor.msb_meter_power_sub08
+                name: C08
+              - entity: sensor.msb_meter_power_sub09
+                name: C09
+              - entity: sensor.msb_meter_power_sub10
+                name: C10 aircon
+              - entity: sensor.msb_meter_power_sub11
+                name: C11
+              - entity: sensor.msb_meter_power_sub12
+                name: C12
+              - entity: sensor.msb_meter_power_sub13
+                name: C13
+              - entity: sensor.msb_meter_power_sub14
+                name: C14
+              - entity: sensor.msb_meter_power_sub15
+                name: C15
+              - entity: sensor.msb_meter_power_sub16
+                name: C16
+
+          - type: custom:apexcharts-card
+            graph_span: 24h
+            header:
+              show: true
+              title: Switchboard total vs inverter load
+              show_states: true
+              colorize_states: true
+            apex_config:
+              chart:
+                height: 220
+            series:
+              - entity: sensor.circuits_total_power
+                name: Sum of 16 circuits
+                type: area
+                curve: smooth
+                opacity: 0.3
+                stroke_width: 2
+                group_by:
+                  func: avg
+                  duration: 5min
+              - entity: sensor.inverter_load_power
+                name: Inverter load register
+                type: line
+                curve: smooth
+                stroke_width: 2
+                group_by:
+                  func: avg
+                  duration: 5min
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Energy today
+            heading_style: title
+            icon: mdi:counter
+
+          - type: entities
+            show_header_toggle: false
+            state_color: false
+            entities:
+              - entity: sensor.circuit_01
+                name: Circuit 01
+              - entity: sensor.circuit_02
+                name: Circuit 02
+              - entity: sensor.circuit_03
+                name: Circuit 03
+              - entity: sensor.circuit_04
+                name: Circuit 04
+              - entity: sensor.circuit_05
+                name: Circuit 05
+              - entity: sensor.circuit_06
+                name: Circuit 06
+              - entity: sensor.circuit_07
+                name: Circuit 07
+              - entity: sensor.circuit_08
+                name: Circuit 08
+              - entity: sensor.circuit_09
+                name: Circuit 09
+              - entity: sensor.circuit_10
+                name: Circuit 10 (aircon)
+              - entity: sensor.circuit_11
+                name: Circuit 11
+              - entity: sensor.circuit_12
+                name: Circuit 12
+              - entity: sensor.circuit_13
+                name: Circuit 13
+              - entity: sensor.circuit_14
+                name: Circuit 14
+              - entity: sensor.circuit_15
+                name: Circuit 15
+              - entity: sensor.circuit_16
+                name: Circuit 16
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Meter health
+            heading_style: subtitle
+            icon: mdi:gauge
+          - type: markdown
+            content: >-
+              The 16 sub-circuits are verified against the inverter's load
+              register and are safe to build on. The meter's own **main channels
+              are not** - phase A tracks nothing recognisable, and B/C are zeroed
+              because `meter_type` is `1_phase`. Switching the meter to 3-phase
+              mode should wake up the solar and battery CTs on B and C.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.msb_meter_meter_type
+                name: Meter mode
+              - entity: sensor.msb_meter_voltage_a
+                name: Mains voltage
+              - entity: sensor.msb_meter_energy_consumed
+                name: Meter lifetime consumed
+              - entity: sensor.circuits_total_power
+                name: Sum of circuits
+              - entity: sensor.inverter_load_power
+                name: Inverter load (cross-check)

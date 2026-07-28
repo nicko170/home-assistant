@@ -60,12 +60,23 @@ lovelace:
       type: module
     - url: /hacsfiles/PlexMeetsHomeAssistant/plex-meets-homeassistant.js
       type: module
+    # NOTE: the file is ha-sankey-chart.js, not sankey-chart.js. Because
+    # lovelace is in yaml mode, HACS cannot register this itself.
+    - url: /hacsfiles/ha-sankey-chart/ha-sankey-chart.js
+      type: module
   dashboards:
     home-energy:
       mode: yaml
       filename: dashboards/energy.yaml
       title: Power
       icon: mdi:transmission-tower
+      show_in_sidebar: true
+      require_admin: false
+    home-circuits:
+      mode: yaml
+      filename: dashboards/circuits.yaml
+      title: Circuits
+      icon: mdi:home-lightning-bolt
       show_in_sidebar: true
       require_admin: false
     home-cameras:

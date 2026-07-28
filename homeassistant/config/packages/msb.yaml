@@ -1,0 +1,123 @@
+# MSB (main switchboard) meter — EARU EASEM-D, 16 sub-circuits.
+#
+# TRUST NOTES — read before building anything else on this device
+# ---------------------------------------------------------------
+# The 16 SUB-CIRCUIT channels are accurate and independently verified. On
+# 2026-07-29 their sum was checked against the inverter's load register across a
+# 3.5x swing in house load:
+#     heater on   subs 1790 W  vs  inverter load 1830 W   (-2%)
+#     heater off  subs  484 W  vs  inverter load  510 W   (-5%)
+# sub10 went 1309 W -> 13 W at the moment of that drop, so sub10 is the aircon.
+#
+# The MAIN channels (A/B/C) are NOT trustworthy and nothing here uses them:
+#   - meter_type (dps 108) is "1_phase", so the meter zeroes B and C entirely.
+#     Raw dps 102/103 are literally 01 00 00 ... - voltage 0.1 V, current 0.
+#     The solar/battery CTs on B and C therefore read nothing until the meter is
+#     switched to 3-phase mode.
+#   - Phase A does not correlate with grid, load, PV or battery. It sat at a flat
+#     ~1200 W while the whole house dropped to 510 W, which is impossible for a
+#     real house circuit. Needs verification at the switchboard.
+#   - The per-phase "power" field in the payload is not apparent power either:
+#     V x I / P_a drifted 19.5 -> 26.5 over a two-minute sample, so it is not a
+#     fixed scale error. Use V x I, or better, use the subs.
+#
+# CIRCUIT IDENTIFICATION — fill these in as they get traced at the switchboard.
+# Renaming here (the `name:` of each utility_meter) relabels the sankey and every
+# chart automatically.
+#   sub01  ?                     sub09  ?
+#   sub02  ?                     sub10  AIRCON (confirmed 2026-07-29)
+#   sub03  ?                     sub11  ?
+#   sub04  ?                     sub12  ?
+#   sub05  ?                     sub13  ?
+#   sub06  ?                     sub14  ?
+#   sub07  ?                     sub15  ?
+#   sub08  ?                     sub16  ?
+
+template:
+  - sensor:
+      # Whole-house load measured at the switchboard, summed from the 16 subs.
+      # This is the trustworthy total - see the note above about power_total.
+      - name: Circuits total power
+        unique_id: msb_circuits_total_power
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: W
+        icon: mdi:home-lightning-bolt
+        # Available as long as at least one circuit is reporting, so a single
+        # dropped channel does not blank the whole-house figure.
+        availability: >-
+          {% set ns = namespace(ok = false) %}
+          {% for i in range(1, 17) %}
+            {% if states('sensor.msb_meter_power_sub' ~ '%02d' | format(i)) | is_number %}
+              {% set ns.ok = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.ok }}
+        state: >-
+          {% set ns = namespace(t = 0.0) %}
+          {% for i in range(1, 17) %}
+            {% set e = 'sensor.msb_meter_power_sub' ~ '%02d' | format(i) %}
+            {% if states(e) | is_number %}
+              {% set ns.t = ns.t + states(e) | float(0) %}
+            {% endif %}
+          {% endfor %}
+          {{ (ns.t * 1000) | round(0) | int }}
+
+      # Directional split of grid and battery, so the sankey can draw one-way
+      # flows. Sign conventions are the ones proven in packages/solar.yaml:
+      #   grid    positive = exporting, negative = importing
+      #   battery positive = charging,  negative = discharging
+      - name: Flow grid import
+        unique_id: flow_grid_import
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: W
+        availability: "{{ states('sensor.inverter_grid_power') | is_number }}"
+        state: "{{ [ -(states('sensor.inverter_grid_power') | float), 0 ] | max | round(0) | int }}"
+
+      - name: Flow grid export
+        unique_id: flow_grid_export
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: W
+        availability: "{{ states('sensor.inverter_grid_power') | is_number }}"
+        state: "{{ [ states('sensor.inverter_grid_power') | float, 0 ] | max | round(0) | int }}"
+
+      - name: Flow battery charge
+        unique_id: flow_battery_charge
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: W
+        availability: "{{ states('sensor.inverter_battery_power') | is_number }}"
+        state: "{{ [ states('sensor.inverter_battery_power') | float, 0 ] | max | round(0) | int }}"
+
+      - name: Flow battery discharge
+        unique_id: flow_battery_discharge
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: W
+        availability: "{{ states('sensor.inverter_battery_power') | is_number }}"
+        state: "{{ [ -(states('sensor.inverter_battery_power') | float), 0 ] | max | round(0) | int }}"
+
+# Daily kWh per circuit. The meter's own energy_subNN counters are lifetime
+# total_increasing values, which are right for the Energy Dashboard but useless
+# for a "today" card - these give a clean per-day figure that resets at midnight.
+# The key and the slugified name are deliberately identical, so the entity_id is
+# sensor.circuit_NN regardless of which one HA derives it from.
+utility_meter:
+  circuit_01: {source: sensor.msb_meter_energy_sub01, name: Circuit 01, cycle: daily}
+  circuit_02: {source: sensor.msb_meter_energy_sub02, name: Circuit 02, cycle: daily}
+  circuit_03: {source: sensor.msb_meter_energy_sub03, name: Circuit 03, cycle: daily}
+  circuit_04: {source: sensor.msb_meter_energy_sub04, name: Circuit 04, cycle: daily}
+  circuit_05: {source: sensor.msb_meter_energy_sub05, name: Circuit 05, cycle: daily}
+  circuit_06: {source: sensor.msb_meter_energy_sub06, name: Circuit 06, cycle: daily}
+  circuit_07: {source: sensor.msb_meter_energy_sub07, name: Circuit 07, cycle: daily}
+  circuit_08: {source: sensor.msb_meter_energy_sub08, name: Circuit 08, cycle: daily}
+  circuit_09: {source: sensor.msb_meter_energy_sub09, name: Circuit 09, cycle: daily}
+  circuit_10: {source: sensor.msb_meter_energy_sub10, name: Circuit 10, cycle: daily}
+  circuit_11: {source: sensor.msb_meter_energy_sub11, name: Circuit 11, cycle: daily}
+  circuit_12: {source: sensor.msb_meter_energy_sub12, name: Circuit 12, cycle: daily}
+  circuit_13: {source: sensor.msb_meter_energy_sub13, name: Circuit 13, cycle: daily}
+  circuit_14: {source: sensor.msb_meter_energy_sub14, name: Circuit 14, cycle: daily}
+  circuit_15: {source: sensor.msb_meter_energy_sub15, name: Circuit 15, cycle: daily}
+  circuit_16: {source: sensor.msb_meter_energy_sub16, name: Circuit 16, cycle: daily}
