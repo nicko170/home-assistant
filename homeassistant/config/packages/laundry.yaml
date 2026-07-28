@@ -119,7 +119,8 @@ template:
         unit_of_measurement: min
         state: >
           {% set s = states('input_datetime.washer_cycle_start') %}
-          {% if s in ['unknown','unavailable',''] %}
+          {% set e0 = states('input_number.washer_cycle_start_energy') | float(0) %}
+          {% if s in ['unknown','unavailable',''] or e0 == 0 %}
             unknown
           {% else %}
             {% set m = ((as_timestamp(states.input_select.washer_state.last_changed)
@@ -133,9 +134,13 @@ template:
         device_class: energy
         unit_of_measurement: kWh
         state: >
-          {% set d = (states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0))
-                   - (states('input_number.washer_cycle_start_energy') | float(0)) %}
-          {{ (d if d > 0 else 0) | round(3) }}
+          {% set e0 = states('input_number.washer_cycle_start_energy') | float(0) %}
+          {% if e0 == 0 %}
+            unknown
+          {% else %}
+            {% set d = (states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0)) - e0 %}
+            {{ (d if d > 0 else 0) | round(3) }}
+          {% endif %}
 
       - name: Dryer last cycle duration
         unique_id: dryer_last_cycle_duration
@@ -143,7 +148,8 @@ template:
         unit_of_measurement: min
         state: >
           {% set s = states('input_datetime.dryer_cycle_start') %}
-          {% if s in ['unknown','unavailable',''] %}
+          {% set e0 = states('input_number.dryer_cycle_start_energy') | float(0) %}
+          {% if s in ['unknown','unavailable',''] or e0 == 0 %}
             unknown
           {% else %}
             {% set m = ((as_timestamp(states.input_select.dryer_state.last_changed)
@@ -157,9 +163,13 @@ template:
         device_class: energy
         unit_of_measurement: kWh
         state: >
-          {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0))
-                   - (states('input_number.dryer_cycle_start_energy') | float(0)) %}
-          {{ (d if d > 0 else 0) | round(3) }}
+          {% set e0 = states('input_number.dryer_cycle_start_energy') | float(0) %}
+          {% if e0 == 0 %}
+            unknown
+          {% else %}
+            {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - e0 %}
+            {{ (d if d > 0 else 0) | round(3) }}
+          {% endif %}
 
 # ---------------------------------------------------------------------------
 # State machine: idle -> running -> finished -> idle
