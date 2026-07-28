@@ -1,0 +1,85 @@
+#!/bin/zsh
+# GitOps deploy for the Home Assistant stack.
+#
+# Pulls origin/main, validates the config INSIDE the container, and only then
+# restarts HA. If validation fails the working tree is hard-reset to the
+# previous commit, so a bad push can never leave HA broken.
+#
+# check_config semantics (verified 2026-07-28):
+#   exit 1 -> YAML/parse error            => roll back
+#   exit 0 -> runtime component errors ok  => proceed
+#
+# Lives OUTSIDE the repo (~/ha-deploy) so a bad commit cannot break the deployer.
+
+set -uo pipefail
+
+REPO=/Users/nickp/ha
+DOCKER=/Users/nickp/.orbstack/bin/docker
+LOG=/Users/nickp/ha-deploy/deploy.log
+TOKEN_FILE=/Users/nickp/.config/ha-deploy/token
+FAILED_FILE=/Users/nickp/ha-deploy/last-failed-sha
+CONTAINER=homeassistant
+HA_URL=http://127.0.0.1:8123
+
+mkdir -p "$(dirname "$LOG")"
+
+log() { print -r -- "$(date '+%F %T') $*" >> "$LOG" }
+
+notify() {
+  [[ -r "$TOKEN_FILE" ]] || return 0
+  local token; token=$(<"$TOKEN_FILE")
+  [[ -n "$token" ]] || return 0
+  for target in mobile_app_nicks_iphone mobile_app_iphone; do
+    curl -s -m 10 -X POST \
+      -H "Authorization: Bearer $token" \
+      -H "Content-Type: application/json" \
+      -d "{\"title\":\"HA Deploy\",\"message\":\"$1\"}" \
+      "$HA_URL/api/services/notify/$target" >/dev/null 2>&1
+  done
+}
+
+cd "$REPO" || { log "FATAL cannot cd $REPO"; exit 1 }
+
+git fetch --quiet origin main 2>>"$LOG" || { log "fetch failed"; exit 1 }
+
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse origin/main)
+[[ "$LOCAL" == "$REMOTE" ]] && exit 0
+
+# A commit that already failed validation stays broken until someone pushes a
+# fix. Without this guard the poller would roll back and notify every cycle.
+if [[ -r "$FAILED_FILE" && "$(<"$FAILED_FILE")" == "$REMOTE" ]]; then
+  exit 0
+fi
+
+log "change detected ${LOCAL:0:8} -> ${REMOTE:0:8}"
+
+if ! git merge --ff-only origin/main >>"$LOG" 2>&1; then
+  log "FAILED ff-only merge - local has diverged; manual fix required"
+  notify "Deploy FAILED: local diverged from origin/main"
+  exit 1
+fi
+
+# Container must be up for validation to mean anything.
+if ! $DOCKER ps --format '{{.Names}}' | grep -qx "$CONTAINER"; then
+  log "container $CONTAINER not running - starting it before validation"
+  $DOCKER start "$CONTAINER" >>"$LOG" 2>&1
+  sleep 20
+fi
+
+if ! $DOCKER exec "$CONTAINER" python -m homeassistant --script check_config -c /config >>"$LOG" 2>&1; then
+  log "check_config FAILED - rolling back to ${LOCAL:0:8}"
+  git reset --hard "$LOCAL" >>"$LOG" 2>&1
+  print -r -- "$REMOTE" > "$FAILED_FILE"
+  notify "Deploy FAILED at ${REMOTE:0:8}, rolled back to ${LOCAL:0:8}. Config invalid - push a fix."
+  exit 1
+fi
+
+log "config valid - restarting $CONTAINER"
+$DOCKER restart "$CONTAINER" >>"$LOG" 2>&1
+rm -f "$FAILED_FILE"
+
+SHORT=$(git rev-parse --short HEAD)
+SUBJECT=$(git log -1 --pretty=%s)
+log "deployed $SHORT ($SUBJECT)"
+notify "Deployed $SHORT: $SUBJECT"
