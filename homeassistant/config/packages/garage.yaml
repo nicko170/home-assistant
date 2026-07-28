@@ -1,0 +1,22 @@
+# Garage door position, corrected for sensor polarity.
+#
+# The BTHome reed sensor reports ON when the magnet is PRESENT - i.e. when the
+# door is CLOSED. Home Assistant's door/garage_door device classes use the
+# opposite convention: on = open. Left uncorrected the door reads open when it
+# is shut.
+#
+# This template sensor is the single source of truth for door position. The
+# ESPHome cover reads it, and the dashboards display it. The raw BTHome entity
+# (binary_sensor.garage_door) is left alone so its battery, voltage,
+# temperature and humidity keep working - only the position is reinterpreted.
+
+template:
+  - binary_sensor:
+      - name: Garage door position
+        unique_id: garage_door_position
+        device_class: garage_door
+        # Raw sensor OFF (magnet away) = door open.
+        state: "{{ is_state('binary_sensor.garage_door', 'off') }}"
+        availability: >
+          {{ states('binary_sensor.garage_door') not in
+             ['unknown', 'unavailable', 'none'] }}

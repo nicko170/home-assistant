@@ -117,7 +117,7 @@ views:
             entities:
               - entity: cover.garage_door_door
                 name: Door
-              - entity: binary_sensor.garage_door
+              - entity: binary_sensor.garage_door_position
                 name: Position sensor
               - entity: sensor.garage_battery
                 name: Sensor battery

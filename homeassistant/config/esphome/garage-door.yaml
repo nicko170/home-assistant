@@ -75,11 +75,16 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF
 
-# Door position, mirrored back from the BTHome sensor in HA.
+# Door position, mirrored back from HA.
+#
+# Deliberately reads binary_sensor.garage_door_position, NOT the raw BTHome
+# entity. The reed sensor reports ON when the magnet is present (door closed),
+# which is the opposite of HA's door convention. The template sensor in
+# packages/garage.yaml corrects that in one place.
 binary_sensor:
   - platform: homeassistant
     id: door_is_open
-    entity_id: binary_sensor.garage_door
+    entity_id: binary_sensor.garage_door_position
     internal: true
 
 cover:

@@ -166,7 +166,7 @@ views:
               - type: cover-open-close
 
           - type: tile
-            entity: binary_sensor.garage_door
+            entity: binary_sensor.garage_door_position
             name: Door sensor
 
           - type: picture-entity
