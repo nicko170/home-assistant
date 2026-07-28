@@ -21,3 +21,7 @@ homeassistant/config/tts/
 # third-party / HACS managed
 homeassistant/config/custom_components/
 homeassistant/config/www/community/
+
+# backups may contain pre-sanitisation secrets
+*.bak
+*.bak.*

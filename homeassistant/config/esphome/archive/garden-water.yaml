@@ -1,0 +1,338 @@
+esphome:
+  name: "garden-water"
+  friendly_name: Garden Water Timer 
+  min_version: 2025.5.0
+  name_add_mac_suffix: false
+
+esp32:
+  board: esp32-c6-devkitm-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+
+# Allow Over-The-Air updates
+ota:
+- platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# Global variables to track valve state
+globals:
+  - id: valve_state
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  
+  - id: charge_threshold
+    type: float
+    initial_value: '3.0'  # Adjust based on your boost cap voltage requirement
+
+# Sensors
+sensor:
+  # Battery voltage monitoring
+  - platform: adc
+    pin: GPIO2
+    name: "Battery Voltage"
+    id: battery_voltage
+    attenuation: auto
+    update_interval: 30s
+    filters:
+      - multiply: 2.0  # Adjust based on your voltage divider
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    device_class: voltage
+    state_class: measurement
+
+  # Boost capacitor voltage monitoring
+  - platform: adc
+    pin: GPIO3
+    name: "Boost Capacitor Voltage"
+    id: boost_cap_voltage
+    attenuation: auto
+    update_interval: 1s
+    filters:
+      - multiply: 2.0  # Adjust based on your voltage divider
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    device_class: voltage
+    state_class: measurement
+
+  # Battery percentage estimation
+  - platform: template
+    name: "Battery Percentage"
+    lambda: |-
+      // Assuming 3V battery system
+      float v = id(battery_voltage).state;
+      if (v > 3.0) return 100.0;
+      if (v < 2.0) return 0.0;
+      return (v - 2.0) * 100.0;
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    device_class: battery
+    state_class: measurement
+    update_interval: 30s
+
+# Binary Sensors
+binary_sensor:
+  # Manual button
+  - platform: gpio
+    pin:
+      number: GPIO7
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Manual Button"
+    id: manual_button
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 10ms
+    on_press:
+      then:
+        - logger.log: "Manual button pressed - toggling valve"
+        - switch.toggle: valve_control
+
+  # Boost capacitor ready indicator
+  - platform: template
+    name: "Boost Capacitor Ready"
+    id: boost_ready
+    lambda: |-
+      return id(boost_cap_voltage).state >= id(charge_threshold);
+    device_class: power
+
+  # Valve state sensor for HA
+  - platform: template
+    name: "Valve Open"
+    id: valve_open_sensor
+    lambda: |-
+      return id(valve_state);
+    device_class: opening
+
+# Switches
+switch:
+  # Main valve control switch
+  - platform: template
+    name: "Water Valve"
+    id: valve_control
+    icon: "mdi:water-pump"
+    lambda: |-
+      return id(valve_state);
+    turn_on_action:
+      - script.execute: open_valve
+    turn_off_action:
+      - script.execute: close_valve
+    optimistic: false
+
+  # Boost enable control (for debugging)
+  - platform: gpio
+    pin: GPIO23
+    name: "Boost Enable"
+    id: boost_enable
+    icon: "mdi:flash"
+    internal: true  # Hide from HA unless debugging
+
+  # Charge control (for debugging)
+  - platform: gpio
+    pin: GPIO22
+    name: "Charge Control"
+    id: charge_control
+    icon: "mdi:battery-charging"
+    internal: true  # Hide from HA unless debugging
+
+  # Sleep control
+  - platform: gpio
+    pin: GPIO8
+    name: "Sleep Mode"
+    id: sleep_mode
+    icon: "mdi:sleep"
+    inverted: false
+    internal: true
+
+# Output pins for valve control
+output:
+  - platform: gpio
+    pin: GPIO20
+    id: valve_in1
+  
+  - platform: gpio
+    pin: GPIO21
+    id: valve_in2
+
+  - platform: gpio
+    pin: GPIO14
+    id: blue_led_output
+    
+  - platform: gpio
+    pin: GPIO15
+    id: red_led_output
+
+# LEDs
+light:
+  - platform: binary
+    name: "Blue LED"
+    id: blue_led
+    output: blue_led_output
+    internal: true
+
+  - platform: binary
+    name: "Red LED"
+    id: red_led
+    output: red_led_output
+    internal: true
+
+# Scripts for valve operation
+script:
+  # Charge boost capacitor
+  - id: charge_boost_cap
+    mode: single
+    then:
+      - logger.log: "Starting boost capacitor charge..."
+      - light.turn_on: red_led
+      - switch.turn_on: boost_enable
+      - delay: 100ms
+      - switch.turn_on: charge_control
+      
+      # Wait for capacitor to charge
+      - while:
+          condition:
+            lambda: 'return id(boost_cap_voltage).state < id(charge_threshold);'
+          then:
+            - delay: 100ms
+            - if:
+                condition:
+                  # Timeout after 5 seconds
+                  lambda: 'return millis() > 5000;'
+                then:
+                  - logger.log: "Charge timeout!"
+                  - script.stop: charge_boost_cap
+      
+      - logger.log: "Boost capacitor charged!"
+      - switch.turn_off: charge_control
+      - light.turn_off: red_led
+
+  # Open valve sequence
+  - id: open_valve
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: 'return id(valve_state);'
+          then:
+            - logger.log: "Valve already open"
+          else:
+            - logger.log: "Opening valve..."
+            - light.turn_on: red_led
+            
+            # Charge the boost capacitor
+            - script.execute: charge_boost_cap
+            - script.wait: charge_boost_cap
+            
+            # Set H-bridge direction for opening
+            - output.turn_on: valve_in1
+            - output.turn_off: valve_in2
+            - delay: 50ms
+            
+            # Pulse the valve (adjust timing as needed)
+            - output.turn_on: valve_in1
+            - delay: 100ms
+            - output.turn_off: valve_in1
+            
+            # Disable boost circuit
+            - switch.turn_off: boost_enable
+            
+            # Update state
+            - globals.set:
+                id: valve_state
+                value: 'true'
+            
+            - light.turn_off: red_led
+            - light.turn_on: blue_led
+            - logger.log: "Valve opened successfully"
+
+  # Close valve sequence
+  - id: close_valve
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(valve_state);'
+          then:
+            - logger.log: "Valve already closed"
+          else:
+            - logger.log: "Closing valve..."
+            - light.turn_on: red_led
+            
+            # Charge the boost capacitor
+            - script.execute: charge_boost_cap
+            - script.wait: charge_boost_cap
+            
+            # Set H-bridge direction for closing (opposite polarity)
+            - output.turn_off: valve_in1
+            - output.turn_on: valve_in2
+            - delay: 50ms
+            
+            # Pulse the valve
+            - output.turn_on: valve_in2
+            - delay: 100ms
+            - output.turn_off: valve_in2
+            
+            # Disable boost circuit
+            - switch.turn_off: boost_enable
+            
+            # Update state
+            - globals.set:
+                id: valve_state
+                value: 'false'
+            
+            - light.turn_off: red_led
+            - light.turn_off: blue_led
+            - logger.log: "Valve closed successfully"
+
+# Automations
+button:
+  # Manual valve test buttons for debugging
+  - platform: template
+    name: "Test Open Valve"
+    id: test_open
+    icon: "mdi:valve-open"
+    on_press:
+      - script.execute: open_valve
+    entity_category: diagnostic
+
+  - platform: template
+    name: "Test Close Valve"
+    id: test_close
+    icon: "mdi:valve-closed"
+    on_press:
+      - script.execute: close_valve
+    entity_category: diagnostic
+
+  # Force charge for testing
+  - platform: template
+    name: "Force Charge Capacitor"
+    id: force_charge
+    icon: "mdi:lightning-bolt"
+    on_press:
+      - script.execute: charge_boost_cap
+    entity_category: diagnostic
+
+# Status LED automation
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(valve_state);'
+          then:
+            # Blink blue LED when valve is open
+            - light.toggle: blue_led
+          else:
+            - light.turn_off: blue_led

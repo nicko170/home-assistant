@@ -1,0 +1,30 @@
+esphome:
+  name: msb-power-monitor
+  friendly_name: MSB Power Monitor
+
+bk72xx:
+  board: cbu
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret msb_api_key
+
+ota:
+  - platform: esphome
+    password: !secret msb_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret msb_ap_ssid
+    password: !secret msb_ap_password
+
+captive_portal:
+    

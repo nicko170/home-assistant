@@ -1,0 +1,17 @@
+substitutions:
+  name: power-monitor-3-f257d8-f257d8
+  friendly_name: Power Monitor 3 - Laundry Washing Machine f257d8
+packages:
+  Athom Technology.Smart Plug V2: github://athom-tech/athom-configs/athom-smart-plug-v2.yaml
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+api:
+  encryption:
+    key: !secret pm3_archive_api_key
+
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

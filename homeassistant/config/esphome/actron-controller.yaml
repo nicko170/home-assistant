@@ -1,0 +1,60 @@
+external_components:
+  - source:
+      type: local
+      path: /config/Actron485/components
+  
+esphome:
+  name: actron-controller
+  friendly_name: Actron 
+  platformio_options:
+    lib_extra_dirs: /config/
+  libraries:
+    Actron485
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: VERY_VERBOSE
+  logs:
+    modbus: VERY_VERBOSE
+    modbus_controller: VERY_VERBOSE
+    uart: VERY_VERBOSE
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret actron_api_key
+
+ota:
+  - platform: esphome
+    password: !secret actron_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: True
+
+interval:
+  - interval: 5s
+    then:
+      - uart.write:
+          id: uart_modbus
+          data: [0xAA, 0xBB, 0xCC]
+      - logger.log: "Sent test bytes on UART"
+
+uart:
+  id: uart_modbus
+  tx_pin: 17
+  rx_pin: 5
+  baud_rate: 9600
+  debug:
+    direction: BOTH
+    
+    after:
+      timeout: 50ms    # Log after 50ms of silence instead of waiting for delimiter
+    sequence:
+      - lambda: UARTDebug::log_hex(direction, bytes, ':');
