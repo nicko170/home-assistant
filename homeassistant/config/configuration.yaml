@@ -25,18 +25,42 @@ http:
     - 100.100.189.37
     - 192.168.15.3
 
-# Four purpose-built YAML dashboards. The default dashboard stays in storage
-# mode so the existing HACS resource registrations continue to load for all
-# dashboards; only these extra ones are YAML-managed.
+# Dashboards are fully YAML-managed.
+#
+# mode: yaml makes the DEFAULT dashboard (ui-lovelace.yaml) the Overview, so
+# there is no duplicate "Overview" in the sidebar. The catch: YAML mode stops
+# HA reading .storage/lovelace_resources, so every HACS card must be declared
+# here or it silently fails to render on EVERY dashboard.
+#
+# hacstag cache-busting params are deliberately omitted - they change on every
+# HACS card update and would go stale here. Hard-refresh the browser after
+# updating a card.
 lovelace:
+  mode: yaml
+  resources:
+    - url: /hacsfiles/power-flow-card-plus/power-flow-card-plus.js
+      type: module
+    - url: /hacsfiles/lovelace-mushroom/mushroom.js
+      type: module
+    - url: /hacsfiles/mini-graph-card/mini-graph-card-bundle.js
+      type: module
+    - url: /hacsfiles/apexcharts-card/apexcharts-card.js
+      type: module
+    - url: /hacsfiles/lovelace-card-mod/card-mod.js
+      type: module
+    - url: /hacsfiles/advanced-camera-card/advanced-camera-card.js
+      type: module
+    - url: /hacsfiles/lovelace-template-entity-row/template-entity-row.js
+      type: module
+    - url: /hacsfiles/stack-in-card/stack-in-card.js
+      type: module
+    - url: /hacsfiles/lovelace-layout-card/layout-card.js
+      type: module
+    - url: /hacsfiles/bar-card/bar-card.js
+      type: module
+    - url: /hacsfiles/PlexMeetsHomeAssistant/plex-meets-homeassistant.js
+      type: module
   dashboards:
-    home-overview:
-      mode: yaml
-      filename: dashboards/overview.yaml
-      title: Overview
-      icon: mdi:home-heart
-      show_in_sidebar: true
-      require_admin: false
     home-energy:
       mode: yaml
       filename: dashboards/energy.yaml
