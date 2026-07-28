@@ -727,3 +727,5 @@ All must hold before Phase 1 begins:
 - Node-RED and the stale `scrypted`/`cloudflared`/`watchtower` compose services — user decision pending
 
 <!-- gitops pipeline verified 2026-07-28 17:39:09 -->
+
+<!-- e2e launchd test 17:43:55 -->
