@@ -1,0 +1,23 @@
+# secrets and tokens
+secrets.yaml
+homeassistant/config/secrets.yaml
+.storage/
+homeassistant/config/.storage/
+.cloud/
+homeassistant/config/.cloud/
+
+# runtime state
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.log.*
+*.log.fault
+.ha_run.lock
+homeassistant/config/backups/
+homeassistant/config/deps/
+homeassistant/config/tts/
+
+# third-party / HACS managed
+homeassistant/config/custom_components/
+homeassistant/config/www/community/
