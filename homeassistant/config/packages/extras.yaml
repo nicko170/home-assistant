@@ -211,3 +211,20 @@ template:
         state: >
           {{ (now() + timedelta(days=states('sensor.macmini_tcp_days_left') | int(0)))
              .strftime('%Y-%m-%d') }}
+
+# ---------------------------------------------------------------------------
+# Re-expose the garage door to Apple Home.
+#
+# A HomeKit accessory pairs to exactly ONE controller, so taking the ESP32
+# into Home Assistant necessarily removed it from Apple Home. This bridge
+# puts it back, with HA in the middle.
+#
+# Filtered to the cover alone - Scrypted already bridges the cameras and two
+# bridges publishing the same accessories would be a mess.
+# ---------------------------------------------------------------------------
+homekit:
+  - name: HA Garage Bridge
+    port: 21064
+    filter:
+      include_entities:
+        - cover.garage_door_door
