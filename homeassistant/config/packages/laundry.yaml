@@ -1,0 +1,108 @@
+# Washer/dryer cycle detection.
+#
+# Thresholds are helpers so they can be tuned from the UI without a redeploy.
+# Values derived from long-term statistics (hourly mean/min/max, Sep 2025 ->
+# Jul 2026), not raw states - the July 2026 macOS TCP outage destroyed the
+# 10-day raw history window.
+#
+#            idle mean  idle max  active max p50  active mean p10  typical cycle
+#   washer   0.00 W     2.88 W    1930 W          12 W             2 h
+#   dryer    0.00 W     0.17 W     666 W         128 W             2-5 h
+#
+# Idle is a clean 0 W on both, so stop=5 W sits far above noise and far below
+# any real load, and start=20 W is far below the p10 active max (222/231 W).
+# The washer's active hours can average just 12 W, which means long near-zero
+# soak stretches inside a cycle - hence its much longer stop debounce. The
+# dryer is a heat-pump model (peak ~750 W, not 2-3 kW) that runs continuously.
+
+input_number:
+  washer_start_threshold:
+    name: Washer start threshold
+    min: 1
+    max: 500
+    step: 1
+    unit_of_measurement: W
+    icon: mdi:washing-machine
+    initial: 20
+  washer_stop_threshold:
+    name: Washer stop threshold
+    min: 1
+    max: 200
+    step: 1
+    unit_of_measurement: W
+    icon: mdi:washing-machine-off
+    initial: 5
+  washer_stop_minutes:
+    name: Washer stop debounce
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:timer-sand
+    initial: 15
+  dryer_start_threshold:
+    name: Dryer start threshold
+    min: 1
+    max: 500
+    step: 1
+    unit_of_measurement: W
+    icon: mdi:tumble-dryer
+    initial: 20
+  dryer_stop_threshold:
+    name: Dryer stop threshold
+    min: 1
+    max: 200
+    step: 1
+    unit_of_measurement: W
+    icon: mdi:tumble-dryer-off
+    initial: 5
+  dryer_stop_minutes:
+    name: Dryer stop debounce
+    min: 1
+    max: 60
+    step: 1
+    unit_of_measurement: min
+    icon: mdi:timer-sand
+    initial: 10
+  washer_cycle_start_energy:
+    name: Washer cycle start energy
+    min: 0
+    max: 1000000
+    step: 0.0001
+    unit_of_measurement: kWh
+    mode: box
+  dryer_cycle_start_energy:
+    name: Dryer cycle start energy
+    min: 0
+    max: 1000000
+    step: 0.0001
+    unit_of_measurement: kWh
+    mode: box
+
+input_datetime:
+  washer_cycle_start:
+    name: Washer cycle start
+    has_date: true
+    has_time: true
+  dryer_cycle_start:
+    name: Dryer cycle start
+    has_date: true
+    has_time: true
+
+input_select:
+  washer_state:
+    name: Washer state
+    options:
+      - idle
+      - running
+      - finished
+    initial: idle
+    icon: mdi:washing-machine
+  dryer_state:
+    name: Dryer state
+    options:
+      - idle
+      - running
+      - finished
+    initial: idle
+    icon: mdi:tumble-dryer

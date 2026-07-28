@@ -2,6 +2,12 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
+# Packages: each file in packages/ is a self-contained feature bundle
+# (helpers + templates + automations) rather than being scattered across
+# configuration.yaml and automations.yaml.
+homeassistant:
+  packages: !include_dir_named packages
+
 # Load frontend themes from the themes folder
 frontend:
   themes: !include_dir_merge_named themes
