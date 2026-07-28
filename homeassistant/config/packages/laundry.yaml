@@ -15,6 +15,18 @@
 # soak stretches inside a cycle - hence its much longer stop debounce. The
 # dryer is a heat-pump model (peak ~750 W, not 2-3 kW) that runs continuously.
 
+# NOTE ON `initial:` - deliberately absent.
+#
+# Setting `initial:` on an input_select or input_number makes HA FORCE that
+# value on every restart, overriding normal state restoration. On 2026-07-28
+# this silently broke the state machine: several deploys restarted HA
+# mid-cycle, each one resetting washer_state from `running` back to `idle`, so
+# the finish automation's `state == running` condition failed and no
+# notification ever fired. One cycle missed by two minutes.
+#
+# Without `initial:` these helpers restore their previous value across
+# restarts, which is what a state machine and user-tuned thresholds both need.
+
 input_number:
   washer_start_threshold:
     name: Washer start threshold
@@ -23,7 +35,6 @@ input_number:
     step: 1
     unit_of_measurement: W
     icon: mdi:washing-machine
-    initial: 20
   washer_stop_threshold:
     name: Washer stop threshold
     min: 1
@@ -31,7 +42,6 @@ input_number:
     step: 1
     unit_of_measurement: W
     icon: mdi:washing-machine-off
-    initial: 5
   washer_stop_minutes:
     name: Washer stop debounce
     min: 1
@@ -39,7 +49,6 @@ input_number:
     step: 1
     unit_of_measurement: min
     icon: mdi:timer-sand
-    initial: 15
   dryer_start_threshold:
     name: Dryer start threshold
     min: 1
@@ -47,7 +56,6 @@ input_number:
     step: 1
     unit_of_measurement: W
     icon: mdi:tumble-dryer
-    initial: 20
   dryer_stop_threshold:
     name: Dryer stop threshold
     min: 1
@@ -55,7 +63,6 @@ input_number:
     step: 1
     unit_of_measurement: W
     icon: mdi:tumble-dryer-off
-    initial: 5
   dryer_stop_minutes:
     name: Dryer stop debounce
     min: 1
@@ -63,7 +70,6 @@ input_number:
     step: 1
     unit_of_measurement: min
     icon: mdi:timer-sand
-    initial: 10
   washer_cycle_start_energy:
     name: Washer cycle start energy
     min: 0
@@ -96,7 +102,6 @@ input_select:
       - idle
       - running
       - finished
-    initial: idle
     icon: mdi:washing-machine
   dryer_state:
     name: Dryer state
@@ -104,7 +109,6 @@ input_select:
       - idle
       - running
       - finished
-    initial: idle
     icon: mdi:tumble-dryer
 
 # ---------------------------------------------------------------------------
