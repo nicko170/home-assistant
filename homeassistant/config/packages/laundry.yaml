@@ -106,3 +106,242 @@ input_select:
       - finished
     initial: idle
     icon: mdi:tumble-dryer
+
+# ---------------------------------------------------------------------------
+# Cycle history. "Last cycle only" - longer history lives in the recorder and
+# the Phase 2 power-signature charts.
+# ---------------------------------------------------------------------------
+template:
+  - sensor:
+      - name: Washer last cycle duration
+        unique_id: washer_last_cycle_duration
+        icon: mdi:timer-outline
+        unit_of_measurement: min
+        state: >
+          {% set s = states('input_datetime.washer_cycle_start') %}
+          {% if s in ['unknown','unavailable',''] %}
+            unknown
+          {% else %}
+            {% set m = ((as_timestamp(states.input_select.washer_state.last_changed)
+                        - as_timestamp(s)) / 60) | round(0) %}
+            {% if m < 0 %}unknown{% else %}{{ m }}{% endif %}
+          {% endif %}
+
+      - name: Washer last cycle energy
+        unique_id: washer_last_cycle_energy
+        icon: mdi:lightning-bolt
+        device_class: energy
+        unit_of_measurement: kWh
+        state: >
+          {% set d = (states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0))
+                   - (states('input_number.washer_cycle_start_energy') | float(0)) %}
+          {{ (d if d > 0 else 0) | round(3) }}
+
+      - name: Dryer last cycle duration
+        unique_id: dryer_last_cycle_duration
+        icon: mdi:timer-outline
+        unit_of_measurement: min
+        state: >
+          {% set s = states('input_datetime.dryer_cycle_start') %}
+          {% if s in ['unknown','unavailable',''] %}
+            unknown
+          {% else %}
+            {% set m = ((as_timestamp(states.input_select.dryer_state.last_changed)
+                        - as_timestamp(s)) / 60) | round(0) %}
+            {% if m < 0 %}unknown{% else %}{{ m }}{% endif %}
+          {% endif %}
+
+      - name: Dryer last cycle energy
+        unique_id: dryer_last_cycle_energy
+        icon: mdi:lightning-bolt
+        device_class: energy
+        unit_of_measurement: kWh
+        state: >
+          {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0))
+                   - (states('input_number.dryer_cycle_start_energy') | float(0)) %}
+          {{ (d if d > 0 else 0) | round(3) }}
+
+# ---------------------------------------------------------------------------
+# State machine: idle -> running -> finished -> idle
+#
+# "finished" requires power below the stop threshold CONTINUOUSLY for the
+# debounce window. That continuity requirement is what stops soak and pause
+# phases firing a false completion.
+# ---------------------------------------------------------------------------
+automation:
+  # ----------------------------- WASHER -----------------------------
+  - id: laundry_washer_start
+    alias: "Laundry: washer started"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.power_monitor_3_f257d8_f257d8_power
+        above: input_number.washer_start_threshold
+        for: "00:01:00"
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.washer_state
+            state: running
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.washer_state
+        data:
+          option: running
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.washer_cycle_start
+        data:
+          timestamp: "{{ now().timestamp() }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.washer_cycle_start_energy
+        data:
+          value: "{{ states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0) }}"
+
+  - id: laundry_washer_finished
+    alias: "Laundry: washer finished"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.power_monitor_3_f257d8_f257d8_power
+        below: input_number.washer_stop_threshold
+        for:
+          minutes: "{{ states('input_number.washer_stop_minutes') | int(15) }}"
+    conditions:
+      - condition: state
+        entity_id: input_select.washer_state
+        state: running
+    actions:
+      # Compute BEFORE the state change. Template sensors update
+      # asynchronously, so reading sensor.washer_last_cycle_* here would race
+      # and could report a stale value.
+      - variables:
+          dur: >-
+            {% set s = states('input_datetime.washer_cycle_start') %}
+            {% if s in ['unknown','unavailable',''] %}?{% else %}{{ ((now().timestamp() - as_timestamp(s)) / 60) | round(0) }}{% endif %}
+          kwh: >-
+            {{ (((states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0)) - (states('input_number.washer_cycle_start_energy') | float(0))) | round(3)) }}
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.washer_state
+        data:
+          option: finished
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Washing machine finished"
+          message: "Took {{ dur }} min, used {{ kwh }} kWh."
+          data:
+            tag: laundry_washer
+            group: laundry
+      - action: notify.mobile_app_iphone
+        data:
+          title: "Washing machine finished"
+          message: "Took {{ dur }} min, used {{ kwh }} kWh."
+          data:
+            tag: laundry_washer
+            group: laundry
+
+  - id: laundry_washer_reset
+    alias: "Laundry: washer back to idle"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.washer_state
+        to: finished
+        for: "06:00:00"
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.washer_state
+        data:
+          option: idle
+
+  # ----------------------------- DRYER ------------------------------
+  - id: laundry_dryer_start
+    alias: "Laundry: dryer started"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.power_monitor_4_f27381_power
+        above: input_number.dryer_start_threshold
+        for: "00:01:00"
+    conditions:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_select.dryer_state
+            state: running
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.dryer_state
+        data:
+          option: running
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.dryer_cycle_start
+        data:
+          timestamp: "{{ now().timestamp() }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.dryer_cycle_start_energy
+        data:
+          value: "{{ states('sensor.power_monitor_4_f27381_total_energy') | float(0) }}"
+
+  - id: laundry_dryer_finished
+    alias: "Laundry: dryer finished"
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.power_monitor_4_f27381_power
+        below: input_number.dryer_stop_threshold
+        for:
+          minutes: "{{ states('input_number.dryer_stop_minutes') | int(10) }}"
+    conditions:
+      - condition: state
+        entity_id: input_select.dryer_state
+        state: running
+    actions:
+      - variables:
+          dur: >-
+            {% set s = states('input_datetime.dryer_cycle_start') %}
+            {% if s in ['unknown','unavailable',''] %}?{% else %}{{ ((now().timestamp() - as_timestamp(s)) / 60) | round(0) }}{% endif %}
+          kwh: >-
+            {{ (((states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - (states('input_number.dryer_cycle_start_energy') | float(0))) | round(3)) }}
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.dryer_state
+        data:
+          option: finished
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Dryer finished"
+          message: "Took {{ dur }} min, used {{ kwh }} kWh."
+          data:
+            tag: laundry_dryer
+            group: laundry
+      - action: notify.mobile_app_iphone
+        data:
+          title: "Dryer finished"
+          message: "Took {{ dur }} min, used {{ kwh }} kWh."
+          data:
+            tag: laundry_dryer
+            group: laundry
+
+  - id: laundry_dryer_reset
+    alias: "Laundry: dryer back to idle"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.dryer_state
+        to: finished
+        for: "06:00:00"
+    actions:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.dryer_state
+        data:
+          option: idle
