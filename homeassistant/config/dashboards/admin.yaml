@@ -13,6 +13,58 @@ views:
     icon: mdi:heart-pulse
 
     sections:
+      # The reason this dashboard exists. macOS freezes its kernel TCP clock
+      # at 49d17h uptime; everything outbound then fails while ping keeps
+      # working. These are pushed from the host every 5 minutes.
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Mac mini host health
+            heading_style: title
+            icon: mdi:desktop-classic
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set d = states('sensor.macmini_tcp_days_left') | int(99) %}
+              {% if d > 14 %}TCP clock healthy
+              {% elif d > 7 %}Reboot due soon
+              {% elif d >= 0 %}REBOOT NEEDED
+              {% else %}TCP CLOCK LIKELY FROZEN{% endif %}
+            secondary: >-
+              {{ states('sensor.macmini_tcp_days_left') }} days left -
+              overflow {{ states('sensor.mac_mini_tcp_overflow_date') }}
+              (up {{ states('sensor.macmini_uptime_days') }}d)
+            icon: mdi:timer-alert-outline
+            icon_color: >-
+              {% set d = states('sensor.macmini_tcp_days_left') | int(99) %}
+              {{ 'green' if d > 14 else 'orange' if d > 7 else 'red' }}
+            tap_action:
+              action: more-info
+              entity: sensor.macmini_tcp_days_left
+
+          - type: gauge
+            entity: sensor.macmini_ephemeral_used
+            name: Ephemeral ports used
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 0
+              yellow: 40
+              red: 70
+
+          - type: custom:mini-graph-card
+            name: TIME_WAIT sockets (24h)
+            entities:
+              - sensor.macmini_time_wait
+            hours_to_show: 24
+            points_per_hour: 12
+            line_width: 2
+            show:
+              fill: fade
+              labels: true
+
       - type: grid
         cards:
           - type: heading
