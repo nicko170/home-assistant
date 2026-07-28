@@ -169,6 +169,21 @@ views:
             entity: binary_sensor.garage_door_position
             name: Door sensor
 
+          # Environment and health from the BTHome door sensor. Battery and
+          # voltage matter because a flat sensor means the cover silently
+          # reports a stale position.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.garage_temperature
+                name: Temperature
+              - entity: sensor.garage_humidity
+                name: Humidity
+              - entity: sensor.garage_battery
+                name: Sensor battery
+              - entity: sensor.garage_voltage
+                name: Sensor voltage
+
           # NOTE: the camera actually overlooking the garage is the .244
           # Hikvision, despite .242 self-reporting its channel name as
           # "Garage". The device names are misleading - see Admin.
@@ -180,6 +195,58 @@ views:
             tap_action:
               action: navigate
               navigation_path: /home-cameras/live
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Environment
+            heading_style: title
+            icon: mdi:thermometer
+
+          # All four BTHome sensors, which only report while the garage ESP32
+          # is up - it is HA's only Bluetooth proxy.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Temperature
+              - entity: sensor.lounge_temp_temperature
+                name: Lounge
+              - entity: sensor.bedroom_temperature
+                name: Bedroom
+              - entity: sensor.aria_room_temperature
+                name: Aria's room
+              - entity: sensor.garage_temperature
+                name: Garage
+              - type: section
+                label: Humidity
+              - entity: sensor.lounge_temp_humidity
+                name: Lounge
+              - entity: sensor.bedroom_humidity
+                name: Bedroom
+              - entity: sensor.aria_room_humidity
+                name: Aria's room
+              - entity: sensor.garage_humidity
+                name: Garage
+
+          - type: custom:mini-graph-card
+            name: Temperature (24h)
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 2
+            entities:
+              - entity: sensor.lounge_temp_temperature
+                name: Lounge
+              - entity: sensor.bedroom_temperature
+                name: Bedroom
+              - entity: sensor.aria_room_temperature
+                name: Aria
+              - entity: sensor.garage_temperature
+                name: Garage
+            show:
+              fill: false
+              labels: true
 
       # ---------------------------------------------------------------
       - type: grid
