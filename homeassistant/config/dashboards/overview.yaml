@@ -1,0 +1,186 @@
+# Overview - home at a glance.
+# Sections view (native grid layout). Deliberately short: this is the "is
+# everything OK" screen, with detail living on Power / Cameras / Admin.
+
+views:
+  - title: Home
+    path: home
+    type: sections
+    max_columns: 3
+    icon: mdi:home
+    badges:
+      - type: entity
+        entity: person.admin
+        name: Nick
+      - type: entity
+        entity: person.elle_gallo
+        name: Elle
+      - type: entity
+        entity: sensor.inverter_battery
+        name: Battery
+        color: >-
+          {{ 'green' if states('sensor.inverter_battery')|float(0) > 50
+             else 'orange' if states('sensor.inverter_battery')|float(0) > 20
+             else 'red' }}
+      - type: entity
+        entity: sensor.inverter_pv_power
+        name: Solar
+      - type: entity
+        entity: sensor.inverter_load_power
+        name: House
+      - type: entity
+        entity: weather.forecast_home
+
+    sections:
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Power right now
+            heading_style: title
+            icon: mdi:transmission-tower
+
+          - type: custom:power-flow-card-plus
+            entities:
+              battery:
+                entity: sensor.inverter_battery_power
+                state_of_charge: sensor.inverter_battery
+                invert_state: true
+              grid:
+                entity: sensor.inverter_grid_power
+                invert_state: true
+              solar:
+                entity: sensor.inverter_pv_power
+                display_zero_state: true
+              home:
+                entity: sensor.inverter_load_power
+            clickable_entities: true
+            display_zero_lines:
+              mode: show
+            use_new_flow_rate_model: true
+            w_decimals: 0
+            kw_decimals: 2
+            watt_threshold: 1000
+
+          - type: tile
+            entity: sensor.battery_remaining_energy
+            name: Battery stored
+            icon: mdi:battery-charging-70
+            features:
+              - type: trend-graph
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Laundry
+            heading_style: title
+            icon: mdi:washing-machine
+
+          - type: custom:mushroom-template-card
+            primary: Washing machine
+            secondary: >-
+              {% set s = states('input_select.washer_state') %}
+              {% if s == 'running' %}Running
+              {%- elif s == 'finished' %}Finished - {{ states('sensor.washer_last_cycle_duration') }} min, {{ states('sensor.washer_last_cycle_energy') }} kWh
+              {%- else %}Idle{% endif %}
+            icon: mdi:washing-machine
+            icon_color: >-
+              {% set s = states('input_select.washer_state') %}
+              {{ 'blue' if s == 'running' else 'green' if s == 'finished' else 'grey' }}
+            badge_icon: >-
+              {{ 'mdi:check' if states('input_select.washer_state') == 'finished' else '' }}
+            tap_action:
+              action: more-info
+              entity: sensor.power_monitor_3_f257d8_f257d8_power
+
+          - type: custom:mushroom-template-card
+            primary: Dryer
+            secondary: >-
+              {% set s = states('input_select.dryer_state') %}
+              {% if s == 'running' %}Running
+              {%- elif s == 'finished' %}Finished - {{ states('sensor.dryer_last_cycle_duration') }} min, {{ states('sensor.dryer_last_cycle_energy') }} kWh
+              {%- else %}Idle{% endif %}
+            icon: mdi:tumble-dryer
+            icon_color: >-
+              {% set s = states('input_select.dryer_state') %}
+              {{ 'blue' if s == 'running' else 'green' if s == 'finished' else 'grey' }}
+            tap_action:
+              action: more-info
+              entity: sensor.power_monitor_4_f27381_power
+
+          - type: custom:mini-graph-card
+            name: Laundry power
+            hours_to_show: 12
+            points_per_hour: 12
+            line_width: 2
+            entities:
+              - entity: sensor.power_monitor_3_f257d8_f257d8_power
+                name: Washer
+              - entity: sensor.power_monitor_4_f27381_power
+                name: Dryer
+            show:
+              fill: fade
+              labels: true
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Front door
+            heading_style: title
+            icon: mdi:doorbell-video
+
+          - type: picture-entity
+            entity: camera.doorbell_fluent
+            camera_view: auto
+            show_name: false
+            show_state: false
+            tap_action:
+              action: navigate
+              navigation_path: /home-cameras/live
+
+          - type: tile
+            entity: binary_sensor.doorbell_visitor
+            name: Doorbell pressed
+            icon: mdi:bell-ring
+
+          - type: tile
+            entity: binary_sensor.doorbell_person
+            name: Person at door
+            icon: mdi:account
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Needs attention
+            heading_style: subtitle
+            icon: mdi:alert-circle-outline
+
+          # Anything unavailable across the devices that matter. Listed
+          # explicitly rather than auto-generated so a stray unavailable
+          # sensor elsewhere does not create noise.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.inverter_connection
+                name: Inverter link
+              - entity: sensor.msb_meter_power_total
+                name: MSB meter (needs Tuya key)
+              - entity: sensor.power_monitor_1_575ec1_power
+                name: Network rack
+              - entity: sensor.power_monitor_2_f27486_power
+                name: Lounge media
+              - entity: camera.doorbell_fluent
+                name: Doorbell camera
+              - entity: camera.front_left_fluent
+                name: Front left camera
+              - entity: camera.garage_mainstream
+                name: Garage camera
+              - entity: camera.hik_front_left_mainstream
+                name: Hik front left
+              - entity: camera.hik_244_mainstream
+                name: Hik 244

@@ -24,3 +24,37 @@ http:
     - 157.20.113.249
     - 100.100.189.37
     - 192.168.15.3
+
+# Four purpose-built YAML dashboards. The default dashboard stays in storage
+# mode so the existing HACS resource registrations continue to load for all
+# dashboards; only these extra ones are YAML-managed.
+lovelace:
+  dashboards:
+    home-overview:
+      mode: yaml
+      filename: dashboards/overview.yaml
+      title: Overview
+      icon: mdi:home-heart
+      show_in_sidebar: true
+      require_admin: false
+    home-energy:
+      mode: yaml
+      filename: dashboards/energy.yaml
+      title: Power
+      icon: mdi:transmission-tower
+      show_in_sidebar: true
+      require_admin: false
+    home-cameras:
+      mode: yaml
+      filename: dashboards/cameras.yaml
+      title: Cameras
+      icon: mdi:cctv
+      show_in_sidebar: true
+      require_admin: false
+    home-admin:
+      mode: yaml
+      filename: dashboards/admin.yaml
+      title: Admin
+      icon: mdi:server
+      show_in_sidebar: true
+      require_admin: true
