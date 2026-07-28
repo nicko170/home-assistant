@@ -1,3 +1,357 @@
+# Power - the deep dive. Complements HA's built-in Energy dashboard rather
+# than duplicating it; that one owns daily/monthly totals and cost.
+#
+# Feed-in tariff is 0, so export is waste, not income. Self-consumption is
+# the headline metric here and exported energy is framed as a loss.
+#
+# The 16 MSB sub-circuits are absent until the Tuya local_key is rotated. A
+# sankey-chart-card over those circuits is the intended addition once they
+# report - there is nothing for it to draw before then.
+
 views:
-  - title: Placeholder
-    cards: []
+  # =================================================================
+  - title: Now
+    path: now
+    type: sections
+    max_columns: 3
+    icon: mdi:flash
+    badges:
+      - type: entity
+        entity: sensor.inverter_battery
+        name: Battery
+      - type: entity
+        entity: sensor.inverter_pv_power
+        name: Solar
+      - type: entity
+        entity: sensor.inverter_grid_power
+        name: Grid
+      - type: entity
+        entity: sensor.inverter_load_power
+        name: Load
+      - type: entity
+        entity: sensor.inverter_device_state
+        name: Inverter
+
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Live flow
+            heading_style: title
+            icon: mdi:transmission-tower
+
+          - type: custom:power-flow-card-plus
+            entities:
+              battery:
+                entity: sensor.inverter_battery_power
+                state_of_charge: sensor.inverter_battery
+                invert_state: true
+              grid:
+                entity: sensor.inverter_grid_power
+                invert_state: true
+              solar:
+                entity: sensor.inverter_pv_power
+                display_zero_state: true
+              home:
+                entity: sensor.inverter_load_power
+            clickable_entities: true
+            display_zero_lines:
+              mode: show
+            use_new_flow_rate_model: true
+            w_decimals: 0
+            kw_decimals: 2
+            watt_threshold: 1000
+
+          - type: custom:apexcharts-card
+            graph_span: 24h
+            header:
+              show: true
+              title: Solar vs house load (24h)
+              show_states: true
+              colorize_states: true
+            yaxis:
+              - min: 0
+            series:
+              - entity: sensor.inverter_pv_power
+                name: Solar
+                type: area
+                curve: smooth
+                stroke_width: 2
+                opacity: 0.35
+                group_by:
+                  func: avg
+                  duration: 10min
+              - entity: sensor.inverter_load_power
+                name: House
+                type: line
+                curve: smooth
+                stroke_width: 2
+                group_by:
+                  func: avg
+                  duration: 10min
+
+      # -------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Battery
+            heading_style: title
+            icon: mdi:battery-high
+
+          - type: gauge
+            entity: sensor.inverter_battery
+            name: State of charge
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 50
+              yellow: 20
+              red: 0
+
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.battery_remaining_energy
+                name: Stored now
+              - entity: sensor.battery_usable_capacity
+                name: Usable capacity
+              - entity: sensor.battery_total_capacity
+                name: Total capacity
+              - entity: sensor.inverter_battery_power
+                name: Charge / discharge
+              - entity: sensor.inverter_battery_soh
+                name: State of health
+              - entity: sensor.inverter_battery_cycles
+                name: Cycles
+              - entity: sensor.inverter_battery_temperature
+                name: Temperature
+              - entity: sensor.inverter_battery_voltage
+                name: Voltage
+              - entity: sensor.battery_time_to_empty
+                name: Time to empty
+
+  # =================================================================
+  - title: Today
+    path: today
+    type: sections
+    max_columns: 3
+    icon: mdi:calendar-today
+
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Today's energy
+            heading_style: title
+            icon: mdi:solar-power-variant
+
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_today_production
+                name: Solar generated
+                icon: mdi:solar-power
+              - entity: sensor.inverter_today_load_consumption
+                name: House used
+                icon: mdi:home-lightning-bolt
+              - entity: sensor.inverter_today_energy_import
+                name: Bought from grid
+                icon: mdi:transmission-tower-import
+              - type: section
+                label: Given away - feed-in tariff is 0
+              - entity: sensor.inverter_today_energy_export
+                name: Exported for nothing
+                icon: mdi:transmission-tower-export
+              - type: section
+                label: Battery
+              - entity: sensor.inverter_today_battery_charge
+                name: Charged
+              - entity: sensor.inverter_today_battery_discharge
+                name: Discharged
+
+          - type: custom:apexcharts-card
+            graph_span: 7d
+            span:
+              end: day
+            header:
+              show: true
+              title: Daily solar vs import (7 days)
+            all_series_config:
+              type: column
+              group_by:
+                func: max
+                duration: 1d
+            series:
+              - entity: sensor.inverter_today_production
+                name: Solar
+              - entity: sensor.inverter_today_energy_import
+                name: Imported
+
+      # -------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Self-consumption
+            heading_style: title
+            icon: mdi:home-percent
+
+          # (production - export) / production. With FIT=0 this is the number
+          # that matters: energy kept is worth the full import rate, energy
+          # exported is worth nothing.
+          - type: custom:mushroom-template-card
+            primary: Self-consumption today
+            secondary: >-
+              {% set p = states('sensor.inverter_today_production') | float(0) %}
+              {% set e = states('sensor.inverter_today_energy_export') | float(0) %}
+              {% if p > 0 %}{{ (100 * (p - e) / p) | round(1) }}% kept on site
+              {% else %}No generation yet today{% endif %}
+            icon: mdi:home-percent
+            icon_color: >-
+              {% set p = states('sensor.inverter_today_production') | float(0) %}
+              {% set e = states('sensor.inverter_today_energy_export') | float(0) %}
+              {% if p <= 0 %}grey
+              {% elif (p - e) / p > 0.8 %}green
+              {% elif (p - e) / p > 0.5 %}orange
+              {% else %}red{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: Value given away today
+            secondary: >-
+              {% set e = states('sensor.inverter_today_energy_export') | float(0) %}
+              {{ e | round(2) }} kWh exported, about ${{ (e * 0.37246) | round(2) }}
+              if it had offset import instead
+            icon: mdi:cash-remove
+            icon_color: red
+
+      # -------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Monitored circuits
+            heading_style: title
+            icon: mdi:home-lightning-bolt-outline
+
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.power_monitor_1_575ec1_power
+                name: Network rack
+              - entity: sensor.power_monitor_2_f27486_power
+                name: Lounge media
+              - entity: sensor.power_monitor_3_f257d8_f257d8_power
+                name: Washing machine
+              - entity: sensor.power_monitor_4_f27381_power
+                name: Dryer
+
+          - type: custom:mini-graph-card
+            name: Monitored circuits (24h)
+            hours_to_show: 24
+            points_per_hour: 6
+            line_width: 2
+            entities:
+              - entity: sensor.power_monitor_1_575ec1_power
+                name: Rack
+              - entity: sensor.power_monitor_2_f27486_power
+                name: Lounge
+              - entity: sensor.power_monitor_3_f257d8_f257d8_power
+                name: Washer
+              - entity: sensor.power_monitor_4_f27381_power
+                name: Dryer
+            show:
+              fill: false
+              labels: true
+
+  # =================================================================
+  - title: Inverter
+    path: inverter
+    type: sections
+    max_columns: 3
+    icon: mdi:cog-outline
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Health
+            heading_style: title
+            icon: mdi:heart-pulse
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.inverter_connection
+                name: Link
+              - entity: sensor.inverter_device_state
+                name: State
+              - entity: sensor.inverter_device_fault
+                name: Fault
+              - entity: sensor.inverter_temperature
+                name: Temperature
+              - entity: sensor.inverter_radiator_temperature
+                name: Radiator
+              - entity: sensor.inverter_module_temperature
+                name: Module
+              - entity: sensor.inverter_insulation_resistance
+                name: Insulation
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: AC side
+            heading_style: title
+            icon: mdi:sine-wave
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_l1_voltage
+                name: L1 voltage
+              - entity: sensor.inverter_l1_current
+                name: L1 current
+              - entity: sensor.inverter_frequency
+                name: Frequency
+              - entity: sensor.inverter_load_ups_power
+                name: UPS output
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: PV strings
+            heading_style: title
+            icon: mdi:solar-panel
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_pv1_power
+                name: PV1 power
+              - entity: sensor.inverter_pv1_voltage
+                name: PV1 voltage
+              - entity: sensor.inverter_pv2_power
+                name: PV2 power
+              - entity: sensor.inverter_pv2_voltage
+                name: PV2 voltage
+
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Controls - change these deliberately
+            heading_style: subtitle
+            icon: mdi:tune
+          # Export Priority must never be selected while the feed-in tariff is
+          # 0. Export Surplus Limitation = Enabled with a 0 W limit forces all
+          # generation into the battery and house loads.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: select.inverter_storage_control_mode
+                name: Storage control mode
+              - entity: select.inverter_export_surplus_limitation
+                name: Export limitation
+              - entity: number.inverter_export_surplus_power
+                name: Export limit (W)
+              - entity: sensor.inverter_total_production
+                name: Lifetime production
+              - entity: sensor.inverter_total_energy_export
+                name: Lifetime export

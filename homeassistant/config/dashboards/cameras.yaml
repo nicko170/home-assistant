@@ -1,3 +1,202 @@
+# Cameras - five live cameras plus the Reolink doorbell.
+#
+# .243 "Front Right" is absent by design: dead hardware, no PoE draw, link
+# down since ~June 2026. It needs physical repair, not configuration.
+#
+# Naming note: the Reolink CX820 at .245 self-reports as "Front Left"
+# (camera.front_left_fluent) and the Hikvision at .241 was named "Hik Front
+# Left" to disambiguate. One of those labels is stale - confirm which is
+# physically where and rename the device, not this file.
+
 views:
-  - title: Placeholder
-    cards: []
+  # =================================================================
+  - title: Live
+    path: live
+    type: sections
+    max_columns: 2
+    icon: mdi:cctv
+
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Front door
+            heading_style: title
+            icon: mdi:doorbell-video
+
+          - type: picture-glance
+            title: Doorbell
+            camera_image: camera.doorbell_fluent
+            camera_view: live
+            entities:
+              - entity: binary_sensor.doorbell_visitor
+                name: Pressed
+              - entity: binary_sensor.doorbell_person
+                name: Person
+              - entity: binary_sensor.doorbell_motion
+                name: Motion
+              - entity: switch.doorbell_record
+                name: Recording
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Reolink
+            heading_style: subtitle
+            icon: mdi:video
+          - type: picture-glance
+            title: Front left (Reolink CX820)
+            camera_image: camera.front_left_fluent
+            camera_view: live
+            entities:
+              - entity: binary_sensor.front_left_motion
+                name: Motion
+              - entity: binary_sensor.front_left_person
+                name: Person
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Hikvision
+            heading_style: subtitle
+            icon: mdi:video-outline
+          - type: picture-glance
+            title: Garage
+            camera_image: camera.garage_mainstream
+            camera_view: live
+            entities:
+              - entity: binary_sensor.garage_motion_alarm
+                name: Motion
+          - type: picture-glance
+            title: Hik front left
+            camera_image: camera.hik_front_left_mainstream
+            camera_view: live
+            entities:
+              - entity: binary_sensor.hik_front_left_motion_alarm
+                name: Motion
+          - type: picture-glance
+            title: Hik 244
+            camera_image: camera.hik_244_mainstream
+            camera_view: live
+            entities:
+              - entity: binary_sensor.hik_244_motion_alarm
+                name: Motion
+
+  # =================================================================
+  - title: Activity
+    path: activity
+    type: sections
+    max_columns: 2
+    icon: mdi:motion-sensor
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Detection right now
+            heading_style: title
+            icon: mdi:motion-sensor
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Doorbell
+              - entity: binary_sensor.doorbell_visitor
+                name: Doorbell pressed
+              - entity: binary_sensor.doorbell_person
+                name: Person
+              - entity: binary_sensor.doorbell_motion
+                name: Motion
+              - type: section
+                label: Front left (Reolink)
+              - entity: binary_sensor.front_left_person
+                name: Person
+              - entity: binary_sensor.front_left_motion
+                name: Motion
+              - type: section
+                label: Hikvision (ONVIF)
+              - entity: binary_sensor.garage_motion_alarm
+                name: Garage motion
+              - entity: binary_sensor.garage_cell_motion_detection
+                name: Garage cell motion
+              - entity: binary_sensor.hik_front_left_motion_alarm
+                name: Hik front left motion
+              - entity: binary_sensor.hik_244_motion_alarm
+                name: Hik 244 motion
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Last 24 hours
+            heading_style: title
+            icon: mdi:history
+          - type: history-graph
+            hours_to_show: 24
+            entities:
+              - entity: binary_sensor.doorbell_visitor
+                name: Doorbell
+              - entity: binary_sensor.doorbell_person
+                name: Door person
+              - entity: binary_sensor.front_left_person
+                name: Front left person
+              - entity: binary_sensor.garage_motion_alarm
+                name: Garage
+              - entity: binary_sensor.hik_front_left_motion_alarm
+                name: Hik front left
+              - entity: binary_sensor.hik_244_motion_alarm
+                name: Hik 244
+
+  # =================================================================
+  - title: Doorbell
+    path: doorbell
+    type: sections
+    max_columns: 2
+    icon: mdi:doorbell
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Doorbell controls
+            heading_style: title
+            icon: mdi:tune
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: siren.doorbell_siren
+                name: Siren
+              - entity: switch.doorbell_siren_on_event
+                name: Siren on event
+              - entity: select.doorbell_doorbell_led
+                name: LED mode
+              - entity: number.doorbell_volume
+                name: Volume
+              - entity: select.doorbell_auto_quick_reply_message
+                name: Auto quick reply
+              - entity: number.doorbell_auto_quick_reply_time
+                name: Quick reply delay
+              - entity: switch.doorbell_record
+                name: Record
+              - entity: switch.doorbell_record_audio
+                name: Record audio
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Detection tuning
+            heading_style: title
+            icon: mdi:target
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: number.doorbell_motion_sensitivity
+                name: Motion sensitivity
+              - entity: number.doorbell_ai_person_sensitivity
+                name: Person sensitivity
+              - entity: select.doorbell_day_night_mode
+                name: Day/night mode
+              - entity: sensor.doorbell_day_night_state
+                name: Day/night state
+              - entity: switch.doorbell_infrared_lights_in_night_mode
+                name: IR at night

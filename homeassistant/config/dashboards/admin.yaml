@@ -1,3 +1,199 @@
+# Admin - infrastructure health. This is the "why did it break" screen.
+#
+# Built around what actually failed on 2026-07-28: the macOS TCP clock
+# overflow that wedged every outbound connection, two cameras that hung while
+# still drawing PoE, and devices that moved IP because they were on DHCP.
+
 views:
-  - title: Placeholder
-    cards: []
+  # =================================================================
+  - title: Health
+    path: health
+    type: sections
+    max_columns: 3
+    icon: mdi:heart-pulse
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Core services
+            heading_style: title
+            icon: mdi:server
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.inverter_connection
+                name: Inverter link
+              - entity: sensor.inverter_update_interval
+                name: Inverter poll interval
+              - entity: sun.sun
+                name: Sun
+              - entity: weather.forecast_home
+                name: Weather
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Wifi signal
+            heading_style: title
+            icon: mdi:wifi
+          # Weak signal is the usual precursor to a device dropping off and
+          # re-addressing, which is what broke the solar integration.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.power_monitor_1_575ec1_wifi_signal_percent
+                name: Rack monitor
+              - entity: sensor.power_monitor_2_f27486_wifi_signal_percent
+                name: Lounge monitor
+              - entity: sensor.power_monitor_3_f257d8_f257d8_wifi_signal_percent
+                name: Washer monitor
+              - entity: sensor.power_monitor_4_f27381_wifi_signal_percent
+                name: Dryer monitor
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Device IP addresses
+            heading_style: title
+            icon: mdi:ip-network
+          # All of these now hold DHCP reservations in the .226+ range. If one
+          # shows an unexpected address, its reservation is not being honoured.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.power_monitor_1_575ec1_ip_address
+                name: Rack monitor
+              - entity: sensor.power_monitor_2_f27486_ip_address
+                name: Lounge monitor
+              - entity: sensor.power_monitor_3_f257d8_f257d8_ip_address
+                name: Washer monitor
+              - entity: sensor.power_monitor_4_f27381_ip_address
+                name: Dryer monitor
+
+  # =================================================================
+  - title: Cameras
+    path: cameras
+    type: sections
+    max_columns: 2
+    icon: mdi:cctv
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Camera availability
+            heading_style: title
+            icon: mdi:cctv
+          # A camera going unavailable here while its switch port still draws
+          # PoE means the camera has hung - a PoE bounce on the port recovers
+          # it. That is what recovered .241 and .244 on 2026-07-28.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: camera.doorbell_fluent
+                name: Doorbell (.240) ge-0/0/10
+              - entity: camera.hik_front_left_mainstream
+                name: Hik front left (.241) ge-0/0/8
+              - entity: camera.garage_mainstream
+                name: Garage (.242) ge-0/0/7
+              - entity: camera.hik_244_mainstream
+                name: Hik 244 (.244) ge-0/0/9
+              - entity: camera.front_left_fluent
+                name: Reolink CX820 (.245) ge-0/0/4
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Known hardware faults
+            heading_style: subtitle
+            icon: mdi:alert
+          - type: markdown
+            content: >
+              **Front Right (.243) - dead.**
+              Switch port `ge-0/0/3`, link down since ~June 2026, drawing zero
+              PoE. Moved 9.19 GB of video before failing. Needs physical
+              attention: dead camera, damaged cable, or water ingress. Not
+              recoverable by a PoE bounce - nothing is powered.
+
+
+              **MSB Meter (.227) - authentication.**
+              Reachable on port 6668, but every Tuya protocol version fails
+              with error 904/914. The `local_key` rotated when the device
+              re-provisioned. Fetch a new key from iot.tuya.com, then
+              Settings → Devices → Tuya Local → MSB Meter → Configure. Until
+              then its 16 sub-circuits are missing from the Energy dashboard.
+
+  # =================================================================
+  - title: Updates
+    path: updates
+    type: sections
+    max_columns: 2
+    icon: mdi:package-up
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pending updates
+            heading_style: title
+            icon: mdi:package-up
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: update.doorbell_firmware
+                name: Doorbell firmware
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Automations
+            heading_style: title
+            icon: mdi:robot
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: automation.laundry_washer_started
+                name: Washer started
+              - entity: automation.laundry_washer_finished
+                name: Washer finished
+              - entity: automation.laundry_washer_back_to_idle
+                name: Washer reset
+              - entity: automation.laundry_dryer_started
+                name: Dryer started
+              - entity: automation.laundry_dryer_finished
+                name: Dryer finished
+              - entity: automation.laundry_dryer_back_to_idle
+                name: Dryer reset
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Laundry thresholds
+            heading_style: subtitle
+            icon: mdi:tune
+          # Derived from long-term statistics. The stop debounce is the one
+          # value not measured against a real full-resolution cycle - if a
+          # "finished" alert ever fires mid-soak, raise the washer value.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: input_number.washer_start_threshold
+                name: Washer start (W)
+              - entity: input_number.washer_stop_threshold
+                name: Washer stop (W)
+              - entity: input_number.washer_stop_minutes
+                name: Washer debounce (min)
+              - entity: input_number.dryer_start_threshold
+                name: Dryer start (W)
+              - entity: input_number.dryer_stop_threshold
+                name: Dryer stop (W)
+              - entity: input_number.dryer_stop_minutes
+                name: Dryer debounce (min)
+              - type: section
+                label: Current state
+              - entity: input_select.washer_state
+                name: Washer
+              - entity: input_select.dryer_state
+                name: Dryer
