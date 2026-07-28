@@ -23,7 +23,7 @@ views:
              else 'orange' if states('sensor.inverter_battery')|float(0) > 20
              else 'red' }}
       - type: entity
-        entity: sensor.inverter_pv_power
+        entity: sensor.solar_pv_power
         name: Solar
       - type: entity
         entity: sensor.inverter_load_power
@@ -51,7 +51,7 @@ views:
                 entity: sensor.inverter_grid_power
                 invert_state: true
               solar:
-                entity: sensor.inverter_pv_power
+                entity: sensor.solar_pv_power
                 display_zero_state: true
               home:
                 entity: sensor.inverter_load_power

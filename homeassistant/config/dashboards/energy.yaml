@@ -20,7 +20,7 @@ views:
         entity: sensor.inverter_battery
         name: Battery
       - type: entity
-        entity: sensor.inverter_pv_power
+        entity: sensor.solar_pv_power
         name: Solar
       - type: entity
         entity: sensor.inverter_grid_power
@@ -51,7 +51,7 @@ views:
                 entity: sensor.inverter_grid_power
                 invert_state: true
               solar:
-                entity: sensor.inverter_pv_power
+                entity: sensor.solar_pv_power
                 display_zero_state: true
               home:
                 entity: sensor.inverter_load_power
@@ -73,7 +73,7 @@ views:
             yaxis:
               - min: 0
             series:
-              - entity: sensor.inverter_pv_power
+              - entity: sensor.solar_pv_power
                 name: Solar
                 type: area
                 curve: smooth
@@ -317,20 +317,29 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: PV strings
+            heading: Solar
             heading_style: title
             icon: mdi:solar-panel
+          - type: markdown
+            content: >-
+              The inverter does not report its PV registers - PV1/PV2 read ~1.7 V
+              and 0 W even in full sun. **Solar PV power** below is derived from
+              the energy balance (load + grid + battery), which is accurate to
+              within 1% of the production counter. Per-string breakdown is not
+              available from this inverter.
           - type: entities
             show_header_toggle: false
             entities:
-              - entity: sensor.inverter_pv1_power
-                name: PV1 power
-              - entity: sensor.inverter_pv1_voltage
-                name: PV1 voltage
-              - entity: sensor.inverter_pv2_power
-                name: PV2 power
-              - entity: sensor.inverter_pv2_voltage
-                name: PV2 voltage
+              - entity: sensor.solar_pv_power
+                name: Solar PV power (derived)
+              - entity: sensor.inverter_today_production
+                name: Produced today
+              - entity: sensor.inverter_total_production
+                name: Produced all time
+              - entity: sensor.inverter_device_state
+                name: Inverter state
+              - entity: sensor.inverter_device_fault
+                name: Inverter fault
 
       - type: grid
         column_span: 3
