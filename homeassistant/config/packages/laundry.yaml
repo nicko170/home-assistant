@@ -117,59 +117,57 @@ template:
         unique_id: washer_last_cycle_duration
         icon: mdi:timer-outline
         unit_of_measurement: min
+        # Sensors declaring a unit must hold a NUMBER. Returning the string
+        # "unknown" fails HA's validator, so absence is expressed via
+        # availability instead. cycle_start_energy is 0 until a real cycle runs.
+        availability: >
+          {{ states('input_number.washer_cycle_start_energy') | float(0) > 0
+              and states('input_datetime.washer_cycle_start') not in
+                  ['unknown', 'unavailable', ''] }}
         state: >
-          {% set s = states('input_datetime.washer_cycle_start') %}
-          {% set e0 = states('input_number.washer_cycle_start_energy') | float(0) %}
-          {% if s in ['unknown','unavailable',''] or e0 == 0 %}
-            unknown
-          {% else %}
-            {% set m = ((as_timestamp(states.input_select.washer_state.last_changed)
-                        - as_timestamp(s)) / 60) | round(0) %}
-            {% if m < 0 %}unknown{% else %}{{ m }}{% endif %}
-          {% endif %}
+          {% set m = ((as_timestamp(states.input_select.washer_state.last_changed)
+                      - as_timestamp(states('input_datetime.washer_cycle_start'))) / 60) | round(0) %}
+          {{ m if m >= 0 else 0 }}
 
       - name: Washer last cycle energy
         unique_id: washer_last_cycle_energy
         icon: mdi:lightning-bolt
         device_class: energy
         unit_of_measurement: kWh
+        availability: >
+          {{ states('input_number.washer_cycle_start_energy') | float(0) > 0 }}
         state: >
           {% set e0 = states('input_number.washer_cycle_start_energy') | float(0) %}
-          {% if e0 == 0 %}
-            unknown
-          {% else %}
-            {% set d = (states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0)) - e0 %}
-            {{ (d if d > 0 else 0) | round(3) }}
-          {% endif %}
+          {% set d = (states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0)) - e0 %}
+          {{ (d if d > 0 else 0) | round(3) }}
 
       - name: Dryer last cycle duration
         unique_id: dryer_last_cycle_duration
         icon: mdi:timer-outline
         unit_of_measurement: min
+        # Sensors declaring a unit must hold a NUMBER. Returning the string
+        # "unknown" fails HA's validator, so absence is expressed via
+        # availability instead. cycle_start_energy is 0 until a real cycle runs.
+        availability: >
+          {{ states('input_number.dryer_cycle_start_energy') | float(0) > 0
+              and states('input_datetime.dryer_cycle_start') not in
+                  ['unknown', 'unavailable', ''] }}
         state: >
-          {% set s = states('input_datetime.dryer_cycle_start') %}
-          {% set e0 = states('input_number.dryer_cycle_start_energy') | float(0) %}
-          {% if s in ['unknown','unavailable',''] or e0 == 0 %}
-            unknown
-          {% else %}
-            {% set m = ((as_timestamp(states.input_select.dryer_state.last_changed)
-                        - as_timestamp(s)) / 60) | round(0) %}
-            {% if m < 0 %}unknown{% else %}{{ m }}{% endif %}
-          {% endif %}
+          {% set m = ((as_timestamp(states.input_select.dryer_state.last_changed)
+                      - as_timestamp(states('input_datetime.dryer_cycle_start'))) / 60) | round(0) %}
+          {{ m if m >= 0 else 0 }}
 
       - name: Dryer last cycle energy
         unique_id: dryer_last_cycle_energy
         icon: mdi:lightning-bolt
         device_class: energy
         unit_of_measurement: kWh
+        availability: >
+          {{ states('input_number.dryer_cycle_start_energy') | float(0) > 0 }}
         state: >
           {% set e0 = states('input_number.dryer_cycle_start_energy') | float(0) %}
-          {% if e0 == 0 %}
-            unknown
-          {% else %}
-            {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - e0 %}
-            {{ (d if d > 0 else 0) | round(3) }}
-          {% endif %}
+          {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - e0 %}
+          {{ (d if d > 0 else 0) | round(3) }}
 
 # ---------------------------------------------------------------------------
 # State machine: idle -> running -> finished -> idle
