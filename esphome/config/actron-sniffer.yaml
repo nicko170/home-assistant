@@ -1,0 +1,129 @@
+# ActronAir LR7 RS485 bus sniffer.
+#
+# Passive listener on the wall-controller bus of a CRS10AS (AIRES / Advance
+# series). awulf/Actron485 does not speak this protocol - it was decoded against
+# the older ESP/Ultima units, whose controllers carry an LM prefix - so the job
+# here is to capture the LR7 traffic and work it out. See
+# https://github.com/awulf/Actron485/issues/7
+#
+# LISTEN ONLY. This is enforced three ways, deliberately redundantly, because a
+# stray transmission onto a bus shared with up to three live wall controllers can
+# error the air conditioner and destroy cheap transceivers:
+#
+#   1. No `tx_pin` is declared on the RS485 uart at all, so ESPHome has no means
+#      of writing to it. This is the important one.
+#   2. DE/RE is driven by a gpio switch with restore_mode ALWAYS_OFF, so the
+#      MAX485 driver is disabled on every boot regardless of prior state.
+#   3. An external 10k pulldown on that same pin holds it low during the window
+#      between power-on and firmware running, and through any crash or brownout.
+#      An internal pulldown does NOT cover that window - it only exists once the
+#      firmware has configured the pin.
+#
+# The predecessor config (homeassistant/config/esphome/actron-controller.yaml)
+# did the opposite - it wrote 0xAA 0xBB 0xCC onto the bus every 5 seconds. Do not
+# reuse it.
+#
+# WIRING (MAX485 breakout, not an auto-direction module - we need DE/RE):
+#   MAX485 RO  -> GPIO16   via 1k series + 2k to GND (MAX485 is 5V, ESP32 is not
+#                          5V tolerant; this divides RO down to ~3.3V)
+#   MAX485 DI  -> not connected (nothing to transmit)
+#   MAX485 DE+RE tied together -> GPIO4, plus external 10k to GND
+#   MAX485 A   -> LR7 blue        (RS485 A)
+#   MAX485 B   -> LR7 blue-white  (RS485 B)
+#   MAX485 VCC -> 5V, GND -> common with the LR7 GND (brown-white/orange-white)
+#
+# Ground MUST be shared with the aircon even when running on battery: RS485 is
+# differential but still needs its common mode inside +/-7V of the receiver.
+#
+# GPIO choice: 16/17 are free on a WROOM-32 (they are NOT on a WROVER, where
+# PSRAM uses them). GPIO4 is not a strapping pin - avoid 0, 2, 5, 12 and 15,
+# which are sampled at reset and will change boot behaviour if pulled.
+#
+# BAUD RATE IS UNKNOWN. Issue #7 assumed 4800, inherited from the ESP/Ultima
+# bus, and got back runs of repeated 08/A8 bytes. Testing on synthesised streams
+# shows wrong-baud decodes produce exactly that character, so treat 4800 as
+# unproven. Reflash over OTA through the candidates below and watch the log; the
+# correct rate shows structured, repeating frames rather than byte soup.
+#
+#   substitutions -> baud: 1200 2400 4800 9600 19200 38400 57600 115200
+
+substitutions:
+  device_name: actron-sniffer
+  baud: "9600"
+  # Idle time that ends a message. RS485 buses delimit frames by gaps, so the
+  # log groups bytes this way. Raise it if single messages get split, lower it
+  # if separate messages get merged.
+  frame_gap: 20ms
+
+esphome:
+  name: ${device_name}
+  friendly_name: Actron Sniffer
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  # UART0 on GPIO1/3 - the USB console, nothing to do with the RS485 bus.
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret actron_api_key
+
+ota:
+  - platform: esphome
+    password: !secret actron_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  # So it is still reachable to reflash if it lands somewhere with no DHCP.
+  ap:
+    ssid: ${device_name}-fallback
+    password: !secret actron_ota_password
+
+captive_portal:
+
+# RS485 transceiver direction. Never turned on by anything in this config.
+switch:
+  - platform: gpio
+    pin: GPIO4
+    id: rs485_de
+    name: RS485 driver enable
+    restore_mode: ALWAYS_OFF
+    entity_category: diagnostic
+
+uart:
+  id: bus485
+  rx_pin: GPIO16
+  # tx_pin deliberately omitted - see the header. Do not add one.
+  baud_rate: ${baud}
+  rx_buffer_size: 2048
+  debug:
+    direction: RX
+    after:
+      timeout: ${frame_gap}
+      bytes: 256
+    sequence:
+      - lambda: UARTDebug::log_hex(direction, bytes, ' ');
+
+sensor:
+  - platform: wifi_signal
+    name: WiFi signal
+    update_interval: 60s
+    entity_category: diagnostic
+  - platform: uptime
+    name: Uptime
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: version
+    name: ESPHome version
+    entity_category: diagnostic
+  - platform: wifi_info
+    ip_address:
+      name: IP address
+      entity_category: diagnostic
