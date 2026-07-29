@@ -521,10 +521,21 @@ views:
                 name: Circuit 04
               - entity: sensor.laundry
                 name: Laundry
-              - entity: sensor.washing_machine
+              # template-entity-row purely to round these two. Their source is
+              # an ESPHome counter with full float precision, unlike the meter's
+              # own energy_subNN channels which are inherently 2 dp. YAML
+              # utility_meter entities are not in the entity registry, so
+              # display precision cannot be set on them the usual way.
+              - type: custom:template-entity-row
+                entity: sensor.washing_machine
                 name: "  ↳ Washing machine"
-              - entity: sensor.dryer
+                state: >-
+                  {{ states('sensor.washing_machine') | float(0) | round(2) }} kWh
+              - type: custom:template-entity-row
+                entity: sensor.dryer
                 name: "  ↳ Dryer"
+                state: >-
+                  {{ states('sensor.dryer') | float(0) | round(2) }} kWh
               - entity: sensor.circuit_06
                 name: Circuit 06
               - entity: sensor.circuit_07
