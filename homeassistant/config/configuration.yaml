@@ -72,13 +72,6 @@ lovelace:
       icon: mdi:transmission-tower
       show_in_sidebar: true
       require_admin: false
-    home-circuits:
-      mode: yaml
-      filename: dashboards/circuits.yaml
-      title: Circuits
-      icon: mdi:home-lightning-bolt
-      show_in_sidebar: true
-      require_admin: false
     home-cameras:
       mode: yaml
       filename: dashboards/cameras.yaml
