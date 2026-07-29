@@ -22,16 +22,29 @@
 #     fixed scale error. Use V x I, or better, use the subs.
 #
 # CIRCUIT IDENTIFICATION — fill these in as they get traced at the switchboard.
-# Renaming here (the `name:` of each utility_meter) relabels the sankey and every
-# chart automatically.
-#   sub01  ?                     sub09  ?
-#   sub02  ?                     sub10  AIRCON (confirmed 2026-07-29)
-#   sub03  ?                     sub11  ?
-#   sub04  ?                     sub12  ?
-#   sub05  ?                     sub13  ?
-#   sub06  ?                     sub14  ?
+#   sub01  ?                     sub09  ? (idle)
+#   sub02  ?                     sub10  AIRCON   (confirmed 2026-07-29)
+#   sub03  ?                     sub11  ? (idle)
+#   sub04  ? (idle)              sub12  ? (idle)
+#   sub05  LAUNDRY (r=0.97)      sub13  ? (idle)
+#   sub06  ?                     sub14  ? (idle)
 #   sub07  ?                     sub15  ?
-#   sub08  ?                     sub16  ?
+#   sub08  ? (idle)              sub16  ?
+#
+# sub05 was identified by correlating each circuit against the washing machine's
+# own plug monitor over a 45 min window: r = 0.97 on deltas, every other circuit
+# below 0.1. sub10 was identified by watching it fall 1309 W -> 13 W at the exact
+# moment the whole-house load dropped by the same amount.
+#
+# sub05 is the LAUNDRY circuit and the washer and dryer hang off it, each with
+# its own plug monitor. Those two are registered in the Energy Dashboard with
+# `included_in_stat: sensor.msb_meter_energy_sub05` so HA nests them under
+# Laundry instead of double counting their kWh. If another sub-metered appliance
+# is ever added, do the same for it.
+#
+# WHEN RENAMING A CIRCUIT: change the utility_meter key AND its name together, as
+# done for laundry/aircon below. The key and the slugified name must stay equal,
+# otherwise the entity_id depends on which one HA happens to derive it from.
 
 template:
   - sensor:
@@ -109,12 +122,12 @@ utility_meter:
   circuit_02: {source: sensor.msb_meter_energy_sub02, name: Circuit 02, cycle: daily}
   circuit_03: {source: sensor.msb_meter_energy_sub03, name: Circuit 03, cycle: daily}
   circuit_04: {source: sensor.msb_meter_energy_sub04, name: Circuit 04, cycle: daily}
-  circuit_05: {source: sensor.msb_meter_energy_sub05, name: Circuit 05, cycle: daily}
+  laundry: {source: sensor.msb_meter_energy_sub05, name: Laundry, cycle: daily}
   circuit_06: {source: sensor.msb_meter_energy_sub06, name: Circuit 06, cycle: daily}
   circuit_07: {source: sensor.msb_meter_energy_sub07, name: Circuit 07, cycle: daily}
   circuit_08: {source: sensor.msb_meter_energy_sub08, name: Circuit 08, cycle: daily}
   circuit_09: {source: sensor.msb_meter_energy_sub09, name: Circuit 09, cycle: daily}
-  circuit_10: {source: sensor.msb_meter_energy_sub10, name: Circuit 10, cycle: daily}
+  aircon: {source: sensor.msb_meter_energy_sub10, name: Aircon, cycle: daily}
   circuit_11: {source: sensor.msb_meter_energy_sub11, name: Circuit 11, cycle: daily}
   circuit_12: {source: sensor.msb_meter_energy_sub12, name: Circuit 12, cycle: daily}
   circuit_13: {source: sensor.msb_meter_energy_sub13, name: Circuit 13, cycle: daily}

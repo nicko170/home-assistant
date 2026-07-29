@@ -102,8 +102,13 @@ views:
                     name: Circuit 03
                   - entity_id: sensor.msb_meter_power_sub04
                     name: Circuit 04
+                  # The laundry circuit feeds the washer and dryer, each of
+                  # which has its own plug monitor, so it breaks out further.
                   - entity_id: sensor.msb_meter_power_sub05
-                    name: Circuit 05
+                    name: Laundry
+                    children:
+                      - sensor.power_monitor_3_f257d8_f257d8_power
+                      - sensor.power_monitor_4_f27381_power
                   - entity_id: sensor.msb_meter_power_sub06
                     name: Circuit 06
                   - entity_id: sensor.msb_meter_power_sub07
@@ -113,7 +118,7 @@ views:
                   - entity_id: sensor.msb_meter_power_sub09
                     name: Circuit 09
                   - entity_id: sensor.msb_meter_power_sub10
-                    name: Circuit 10 (aircon)
+                    name: Aircon
                   - entity_id: sensor.msb_meter_power_sub11
                     name: Circuit 11
                   - entity_id: sensor.msb_meter_power_sub12
@@ -126,6 +131,12 @@ views:
                     name: Circuit 15
                   - entity_id: sensor.msb_meter_power_sub16
                     name: Circuit 16
+              # Sub-metered appliances hanging off the laundry circuit.
+              - entities:
+                  - entity_id: sensor.power_monitor_3_f257d8_f257d8_power
+                    name: Washing machine
+                  - entity_id: sensor.power_monitor_4_f27381_power
+                    name: Dryer
 
       # ---------------------------------------------------------------
       - type: grid
@@ -171,7 +182,7 @@ views:
               - entity: sensor.msb_meter_power_sub04
                 name: C04
               - entity: sensor.msb_meter_power_sub05
-                name: C05
+                name: Laundry
               - entity: sensor.msb_meter_power_sub06
                 name: C06
               - entity: sensor.msb_meter_power_sub07
@@ -181,7 +192,7 @@ views:
               - entity: sensor.msb_meter_power_sub09
                 name: C09
               - entity: sensor.msb_meter_power_sub10
-                name: C10 aircon
+                name: Aircon
               - entity: sensor.msb_meter_power_sub11
                 name: C11
               - entity: sensor.msb_meter_power_sub12
@@ -245,8 +256,12 @@ views:
                 name: Circuit 03
               - entity: sensor.circuit_04
                 name: Circuit 04
-              - entity: sensor.circuit_05
-                name: Circuit 05
+              - entity: sensor.laundry
+                name: Laundry
+              - entity: sensor.power_monitor_3_f257d8_f257d8_total_energy
+                name: "  ↳ Washing machine"
+              - entity: sensor.power_monitor_4_f27381_total_energy
+                name: "  ↳ Dryer"
               - entity: sensor.circuit_06
                 name: Circuit 06
               - entity: sensor.circuit_07
@@ -255,8 +270,8 @@ views:
                 name: Circuit 08
               - entity: sensor.circuit_09
                 name: Circuit 09
-              - entity: sensor.circuit_10
-                name: Circuit 10 (aircon)
+              - entity: sensor.aircon
+                name: Aircon
               - entity: sensor.circuit_11
                 name: Circuit 11
               - entity: sensor.circuit_12
