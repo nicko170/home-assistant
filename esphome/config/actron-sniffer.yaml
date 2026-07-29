@@ -26,7 +26,11 @@
 # WIRING (MAX485 breakout, not an auto-direction module - we need DE/RE):
 #   MAX485 RO  -> GPIO16   via 1k series + 2k to GND (MAX485 is 5V, ESP32 is not
 #                          5V tolerant; this divides RO down to ~3.3V)
-#   MAX485 DI  -> not connected (nothing to transmit)
+#   MAX485 DI  -> GPIO17. Wire it now even though this config never transmits.
+#                It is inert regardless: no tx_pin is declared, and DE held low
+#                keeps the driver high-Z whatever DI does. Having it already
+#                soldered means adding control later is an OTA, not another trip
+#                to the wall with a soldering iron.
 #   MAX485 DE+RE tied together -> GPIO4, plus external 10k to GND
 #   MAX485 A   -> LR7 blue        (RS485 A)
 #   MAX485 B   -> LR7 blue-white  (RS485 B)
