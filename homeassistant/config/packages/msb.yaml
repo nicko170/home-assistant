@@ -123,6 +123,14 @@ utility_meter:
   circuit_03: {source: sensor.msb_meter_energy_sub03, name: Circuit 03, cycle: daily}
   circuit_04: {source: sensor.msb_meter_energy_sub04, name: Circuit 04, cycle: daily}
   laundry: {source: sensor.msb_meter_energy_sub05, name: Laundry, cycle: daily}
+  # The washer and dryer sit on the laundry circuit and each has its own plug
+  # monitor, but ESPHome only exposes a lifetime `total_energy` and a
+  # `total_energy_since_boot` that resets on reboot rather than at midnight.
+  # Neither belongs on a "today" card, so they get daily meters of their own.
+  # These are for display only - the Energy Dashboard still uses the lifetime
+  # counters, nested under Laundry via included_in_stat.
+  washing_machine: {source: sensor.power_monitor_3_f257d8_f257d8_total_energy, name: Washing machine, cycle: daily}
+  dryer: {source: sensor.power_monitor_4_f27381_total_energy, name: Dryer, cycle: daily}
   circuit_06: {source: sensor.msb_meter_energy_sub06, name: Circuit 06, cycle: daily}
   circuit_07: {source: sensor.msb_meter_energy_sub07, name: Circuit 07, cycle: daily}
   circuit_08: {source: sensor.msb_meter_energy_sub08, name: Circuit 08, cycle: daily}

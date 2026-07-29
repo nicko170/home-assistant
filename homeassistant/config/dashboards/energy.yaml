@@ -521,9 +521,9 @@ views:
                 name: Circuit 04
               - entity: sensor.laundry
                 name: Laundry
-              - entity: sensor.power_monitor_3_f257d8_f257d8_total_energy
+              - entity: sensor.washing_machine
                 name: "  ↳ Washing machine"
-              - entity: sensor.power_monitor_4_f27381_total_energy
+              - entity: sensor.dryer
                 name: "  ↳ Dryer"
               - entity: sensor.circuit_06
                 name: Circuit 06
