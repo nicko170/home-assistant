@@ -358,11 +358,11 @@ views:
               # The 16 circuits themselves.
               - entities:
                   - entity_id: sensor.msb_meter_power_sub01
-                    name: Circuit 01
+                    name: Light 1
                   - entity_id: sensor.msb_meter_power_sub02
-                    name: Circuit 02
+                    name: Light 2
                   - entity_id: sensor.msb_meter_power_sub03
-                    name: Circuit 03
+                    name: Light 3
                   - entity_id: sensor.msb_meter_power_sub04
                     name: Circuit 04
                   # The laundry circuit feeds the washer and dryer, each of
@@ -437,11 +437,11 @@ views:
                 duration: 10min
             series:
               - entity: sensor.msb_meter_power_sub01
-                name: C01
+                name: Light 1
               - entity: sensor.msb_meter_power_sub02
-                name: C02
+                name: Light 2
               - entity: sensor.msb_meter_power_sub03
-                name: C03
+                name: Light 3
               - entity: sensor.msb_meter_power_sub04
                 name: C04
               - entity: sensor.msb_meter_power_sub05
@@ -511,12 +511,12 @@ views:
             show_header_toggle: false
             state_color: false
             entities:
-              - entity: sensor.circuit_01
-                name: Circuit 01
-              - entity: sensor.circuit_02
-                name: Circuit 02
-              - entity: sensor.circuit_03
-                name: Circuit 03
+              - entity: sensor.light_1
+                name: Light 1
+              - entity: sensor.light_2
+                name: Light 2
+              - entity: sensor.light_3
+                name: Light 3
               - entity: sensor.circuit_04
                 name: Circuit 04
               - entity: sensor.laundry
