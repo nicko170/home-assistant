@@ -368,10 +368,11 @@ views:
                   # The laundry circuit feeds the washer and dryer, each of
                   # which has its own plug monitor, so it breaks out further.
                   - entity_id: sensor.msb_meter_power_sub05
-                    name: Laundry
+                    name: Laundry + lounge
                     children:
                       - sensor.power_monitor_3_f257d8_f257d8_power
                       - sensor.power_monitor_4_f27381_power
+                      - sensor.power_monitor_2_f27486_power
                   - entity_id: sensor.msb_meter_power_sub06
                     name: Garage
                   - entity_id: sensor.msb_meter_power_sub07
@@ -394,12 +395,14 @@ views:
                     name: Water pump
                   - entity_id: sensor.msb_meter_power_sub16
                     name: Hot water
-              # Sub-metered appliances hanging off the laundry circuit.
+              # Sub-metered appliances hanging off the laundry/lounge circuit.
               - entities:
                   - entity_id: sensor.power_monitor_3_f257d8_f257d8_power
                     name: Washing machine
                   - entity_id: sensor.power_monitor_4_f27381_power
                     name: Dryer
+                  - entity_id: sensor.power_monitor_2_f27486_power
+                    name: Lounge media
 
       # ---------------------------------------------------------------
       - type: grid
@@ -445,7 +448,7 @@ views:
               - entity: sensor.msb_meter_power_sub04
                 name: C04
               - entity: sensor.msb_meter_power_sub05
-                name: Laundry
+                name: Laundry + lounge
               - entity: sensor.msb_meter_power_sub06
                 name: Garage
               - entity: sensor.msb_meter_power_sub07
@@ -519,8 +522,8 @@ views:
                 name: Light 3
               - entity: sensor.circuit_04
                 name: Circuit 04
-              - entity: sensor.laundry
-                name: Laundry
+              - entity: sensor.laundry_and_lounge
+                name: Laundry and lounge
               # template-entity-row purely to round these two. Their source is
               # an ESPHome counter with full float precision, unlike the meter's
               # own energy_subNN channels which are inherently 2 dp. YAML
@@ -536,6 +539,11 @@ views:
                 name: "  ↳ Dryer"
                 state: >-
                   {{ states('sensor.dryer') | float(0) | round(2) }} kWh
+              - type: custom:template-entity-row
+                entity: sensor.lounge_media
+                name: "  ↳ Lounge media"
+                state: >-
+                  {{ states('sensor.lounge_media') | float(0) | round(2) }} kWh
               - entity: sensor.garage
                 name: Garage
               - type: custom:template-entity-row
