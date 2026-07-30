@@ -28,7 +28,7 @@
 #   sub04  ? (idle)              sub12  STOVE (confirmed 2026-07-30)
 #   sub05  LAUNDRY (r=0.97)      sub13  ? (idle)
 #   sub06  ?                     sub14  ? (idle)
-#   sub07  kitchen power? (lead)   sub15  ~700W 40s bursts (lead)
+#   sub07  KITCHEN (confirmed)      sub15  WATER PUMP (confirmed)
 #   sub08  ? (idle)              sub16  HOT WATER (heat pump, confirmed 2026-07-30)
 #
 # Lighting circuits, 2026-07-30, by switching every light in the house off:
@@ -52,14 +52,18 @@
 # two cooktop elements at once: sub12 should roughly double to ~3.7 kW if the
 # cooktop is on this circuit.
 #
-# sub07 is NOT the stove, despite also being busy at dinner. It holds a permanent
-# 40-50 W standby and several discrete levels - 670 / 1212 / 1800 / 2280 W - with
-# bursts at lunch, dinner and 19:30. That is a kitchen power circuit feeding
-# several appliances. The 18:41-18:44 burst at 2050-2284 W for 2.75 min is a kettle.
+# sub07 is the KITCHEN, not the stove, despite also being busy at dinner. It holds
+# a permanent 40-50 W standby and several discrete levels - 670 / 1212 / 1800 /
+# 2280 W - with bursts at lunch, dinner and 19:30, because it feeds several
+# appliances (microwave, dishwasher and so on). The 18:41-18:44 burst at
+# 2050-2284 W for 2.75 min is the kettle. Its standby floor is the appliance
+# clocks, which is why this circuit never reads zero.
 #
-# sub15 does short ~700-740 W bursts of 30-45 s at 15:55, 16:30, 18:16, 18:29,
-# 18:37, 18:43, 19:20 and 21:42. The clustering around water use hints at a
-# pressure/rainwater pump, but that is unverified - do not label it on a guess.
+# sub15 is the WATER PUMP - the rainwater tank pump that serves the toilets.
+# Signature is short ~700-740 W bursts of 30-45 s, on demand: 15:55, 16:30, 18:16,
+# 18:29, 18:37, 18:43, 19:20, 21:42. Bursts that brief and that regular in
+# amplitude are a pump reaching cut-out pressure, and their timing tracks water
+# use rather than any schedule.
 #
 # sub05 was identified by correlating each circuit against the washing machine's
 # own plug monitor over a 45 min window: r = 0.97 on deltas, every other circuit
@@ -162,7 +166,7 @@ utility_meter:
   washing_machine: {source: sensor.power_monitor_3_f257d8_f257d8_total_energy, name: Washing machine, cycle: daily}
   dryer: {source: sensor.power_monitor_4_f27381_total_energy, name: Dryer, cycle: daily}
   circuit_06: {source: sensor.msb_meter_energy_sub06, name: Circuit 06, cycle: daily}
-  circuit_07: {source: sensor.msb_meter_energy_sub07, name: Circuit 07, cycle: daily}
+  kitchen: {source: sensor.msb_meter_energy_sub07, name: Kitchen, cycle: daily}
   circuit_08: {source: sensor.msb_meter_energy_sub08, name: Circuit 08, cycle: daily}
   circuit_09: {source: sensor.msb_meter_energy_sub09, name: Circuit 09, cycle: daily}
   aircon: {source: sensor.msb_meter_energy_sub10, name: Aircon, cycle: daily}
@@ -170,5 +174,5 @@ utility_meter:
   stove: {source: sensor.msb_meter_energy_sub12, name: Stove, cycle: daily}
   circuit_13: {source: sensor.msb_meter_energy_sub13, name: Circuit 13, cycle: daily}
   circuit_14: {source: sensor.msb_meter_energy_sub14, name: Circuit 14, cycle: daily}
-  circuit_15: {source: sensor.msb_meter_energy_sub15, name: Circuit 15, cycle: daily}
+  water_pump: {source: sensor.msb_meter_energy_sub15, name: Water pump, cycle: daily}
   hot_water: {source: sensor.msb_meter_energy_sub16, name: Hot water, cycle: daily}
