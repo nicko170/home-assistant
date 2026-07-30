@@ -27,7 +27,7 @@
 #   sub03  LIGHT 3 (unconfirmed)   sub11  ? (idle)
 #   sub04  ? (idle)              sub12  STOVE (confirmed 2026-07-30)
 #   sub05  LAUNDRY (r=0.97)      sub13  ? (idle)
-#   sub06  ?                     sub14  ? (idle)
+#   sub06  GARAGE (confirmed)      sub14  ? (idle)
 #   sub07  KITCHEN (confirmed)      sub15  WATER PUMP (confirmed)
 #   sub08  ? (idle)              sub16  HOT WATER (heat pump, confirmed 2026-07-30)
 #
@@ -69,6 +69,33 @@
 # own plug monitor over a 45 min window: r = 0.97 on deltas, every other circuit
 # below 0.1. sub10 was identified by watching it fall 1309 W -> 13 W at the exact
 # moment the whole-house load dropped by the same amount.
+#
+# sub06 is the GARAGE and the network rack sits on it. Proven by coincident spikes
+# of matching magnitude rather than by correlation - the rack idles at a near
+# constant 69 W, so there is almost no variance to correlate and r came out at
+# -0.03, which says nothing either way. The events do:
+#     15:36:41  sub06  178 -> 1156 W (+978)   rack 67 -> 1011 W (+944)
+#     15:36:56  sub06 1156 ->  183 W (-973)   rack      -> 70 W
+# repeated at 15:43 and 15:50. Containment agrees: only 4 of 4409 samples had
+# sub06 below the rack, and those are polling skew.
+#
+# sub06 carries more than the rack. These moved with the rack flat:
+#     22:21:34  sub06 181 -> 1625 W (+1444)   rack 71..73
+#     22:26:49  sub06 186 -> 1706 W (+1520)   rack 71..74
+#     10:03:59  sub06 232 ->  578 W ( +346)   rack 66..69
+# so something in the garage draws ~1.5 kW in short bursts. Unidentified.
+#
+# The GARAGE FRIDGE is NOT on sub06: after subtracting the rack the residual is a
+# steady ~153 W that does not cycle (runs of 2-4 min, only 122 W of swing), which
+# is not a compressor duty cycle. There is likely a second garage circuit, which
+# fits the fridge being on the far side with the Ryobi chargers.
+#
+# The rack is registered in the Energy Dashboard with
+# `included_in_stat: sensor.msb_meter_energy_sub06` so its kWh is nested under
+# Garage rather than counted twice.
+#
+# STILL TO CHECK: power_monitor_2 (Lounge Media) is an unnested individual device.
+# If it sits inside one of the 16 circuits it is being double counted too.
 #
 # sub05 is the LAUNDRY circuit and the washer and dryer hang off it, each with
 # its own plug monitor. Those two are registered in the Energy Dashboard with
@@ -165,7 +192,10 @@ utility_meter:
   # counters, nested under Laundry via included_in_stat.
   washing_machine: {source: sensor.power_monitor_3_f257d8_f257d8_total_energy, name: Washing machine, cycle: daily}
   dryer: {source: sensor.power_monitor_4_f27381_total_energy, name: Dryer, cycle: daily}
-  circuit_06: {source: sensor.msb_meter_energy_sub06, name: Circuit 06, cycle: daily}
+  garage: {source: sensor.msb_meter_energy_sub06, name: Garage, cycle: daily}
+  # Same reasoning as the laundry pair: the rack's ESPHome counter is a lifetime
+  # total, which belongs on the Energy Dashboard but not on a "today" card.
+  network_rack: {source: sensor.power_monitor_1_575ec1_total_energy, name: Network rack, cycle: daily}
   kitchen: {source: sensor.msb_meter_energy_sub07, name: Kitchen, cycle: daily}
   circuit_08: {source: sensor.msb_meter_energy_sub08, name: Circuit 08, cycle: daily}
   circuit_09: {source: sensor.msb_meter_energy_sub09, name: Circuit 09, cycle: daily}

@@ -373,7 +373,7 @@ views:
                       - sensor.power_monitor_3_f257d8_f257d8_power
                       - sensor.power_monitor_4_f27381_power
                   - entity_id: sensor.msb_meter_power_sub06
-                    name: Circuit 06
+                    name: Garage
                   - entity_id: sensor.msb_meter_power_sub07
                     name: Kitchen
                   - entity_id: sensor.msb_meter_power_sub08
@@ -447,7 +447,7 @@ views:
               - entity: sensor.msb_meter_power_sub05
                 name: Laundry
               - entity: sensor.msb_meter_power_sub06
-                name: C06
+                name: Garage
               - entity: sensor.msb_meter_power_sub07
                 name: Kitchen
               - entity: sensor.msb_meter_power_sub08
@@ -536,8 +536,13 @@ views:
                 name: "  ↳ Dryer"
                 state: >-
                   {{ states('sensor.dryer') | float(0) | round(2) }} kWh
-              - entity: sensor.circuit_06
-                name: Circuit 06
+              - entity: sensor.garage
+                name: Garage
+              - type: custom:template-entity-row
+                entity: sensor.network_rack
+                name: "  ↳ Network rack"
+                state: >-
+                  {{ states('sensor.network_rack') | float(0) | round(2) }} kWh
               - entity: sensor.kitchen
                 name: Kitchen
               - entity: sensor.circuit_08
