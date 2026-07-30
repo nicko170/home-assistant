@@ -21,8 +21,12 @@ http:
   trusted_proxies:
     - 127.0.0.1
     - 172.24.0.1
-    - 157.20.113.249
-    - 100.100.189.37
+    # Kept in secrets.yaml, not because they are credentials, but because
+    # publishing this list tells an attacker exactly which source addresses HA
+    # will trust for X-Forwarded-For - and one of them is unrelated production
+    # infrastructure. The RFC1918 entries below are harmless to disclose.
+    - !secret proxy_tunnel_host
+    - !secret proxy_tailscale_host
     - 192.168.15.3
 
 # Dashboards are fully YAML-managed.
