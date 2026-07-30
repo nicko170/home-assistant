@@ -29,7 +29,7 @@
 #   sub05  LAUNDRY (r=0.97)      sub13  ? (idle)
 #   sub06  ?                     sub14  ? (idle)
 #   sub07  ?                     sub15  ?
-#   sub08  ? (idle)              sub16  ?
+#   sub08  ? (idle)              sub16  HOT WATER (heat pump, confirmed 2026-07-30)
 #
 # sub05 was identified by correlating each circuit against the washing machine's
 # own plug monitor over a 45 min window: r = 0.97 on deltas, every other circuit
@@ -115,8 +115,8 @@ template:
 # Daily kWh per circuit. The meter's own energy_subNN counters are lifetime
 # total_increasing values, which are right for the Energy Dashboard but useless
 # for a "today" card - these give a clean per-day figure that resets at midnight.
-# The key and the slugified name are deliberately identical, so the entity_id is
-# sensor.circuit_NN regardless of which one HA derives it from.
+# In every entry the key and the slugified name are deliberately identical, so
+# the entity_id is predictable regardless of which one HA derives it from.
 utility_meter:
   circuit_01: {source: sensor.msb_meter_energy_sub01, name: Circuit 01, cycle: daily}
   circuit_02: {source: sensor.msb_meter_energy_sub02, name: Circuit 02, cycle: daily}
@@ -141,4 +141,4 @@ utility_meter:
   circuit_13: {source: sensor.msb_meter_energy_sub13, name: Circuit 13, cycle: daily}
   circuit_14: {source: sensor.msb_meter_energy_sub14, name: Circuit 14, cycle: daily}
   circuit_15: {source: sensor.msb_meter_energy_sub15, name: Circuit 15, cycle: daily}
-  circuit_16: {source: sensor.msb_meter_energy_sub16, name: Circuit 16, cycle: daily}
+  hot_water: {source: sensor.msb_meter_energy_sub16, name: Hot water, cycle: daily}

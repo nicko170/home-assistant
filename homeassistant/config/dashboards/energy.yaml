@@ -393,7 +393,7 @@ views:
                   - entity_id: sensor.msb_meter_power_sub15
                     name: Circuit 15
                   - entity_id: sensor.msb_meter_power_sub16
-                    name: Circuit 16
+                    name: Hot water
               # Sub-metered appliances hanging off the laundry circuit.
               - entities:
                   - entity_id: sensor.power_monitor_3_f257d8_f257d8_power
@@ -467,7 +467,7 @@ views:
               - entity: sensor.msb_meter_power_sub15
                 name: C15
               - entity: sensor.msb_meter_power_sub16
-                name: C16
+                name: Hot water
 
           - type: custom:apexcharts-card
             graph_span: 24h
@@ -556,8 +556,8 @@ views:
                 name: Circuit 14
               - entity: sensor.circuit_15
                 name: Circuit 15
-              - entity: sensor.circuit_16
-                name: Circuit 16
+              - entity: sensor.hot_water
+                name: Hot water
 
       # ---------------------------------------------------------------
       - type: grid
