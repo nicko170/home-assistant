@@ -25,10 +25,10 @@
 #   sub01  LIGHT 1 (confirmed)     sub09  ? (idle)
 #   sub02  LIGHT 2 (confirmed)     sub10  AIRCON   (confirmed 2026-07-29)
 #   sub03  LIGHT 3 (unconfirmed)   sub11  ? (idle)
-#   sub04  ? (idle)              sub12  ? (idle)
+#   sub04  ? (idle)              sub12  STOVE (confirmed 2026-07-30)
 #   sub05  LAUNDRY (r=0.97)      sub13  ? (idle)
 #   sub06  ?                     sub14  ? (idle)
-#   sub07  ?                     sub15  ?
+#   sub07  kitchen power? (lead)   sub15  ~700W 40s bursts (lead)
 #   sub08  ? (idle)              sub16  HOT WATER (heat pump, confirmed 2026-07-30)
 #
 # Lighting circuits, 2026-07-30, by switching every light in the house off:
@@ -42,6 +42,24 @@
 #         nothing. Its profile (off 66% of the time, peaks at midday and 18:00) is
 #         consistent with lighting but UNPROVEN. Re-test by switching it during
 #         the day, when it is actually drawing.
+#
+# sub12 is the STOVE. On 2026-07-30 it ran 17:11-17:36 and at no other point in
+# the day, cycling ~30s on / 30s off at a 63% duty, and its power while running was
+# effectively a single value: 1850 W x30 samples, with 1800/1900/1950 stragglers.
+# One fixed wattage plus zero standby draw means a hardwired resistive element on
+# a thermostat. Peak was only 1928 W though, i.e. one element's worth - so this may
+# be specifically the oven rather than a whole oven+cooktop unit. To settle it, run
+# two cooktop elements at once: sub12 should roughly double to ~3.7 kW if the
+# cooktop is on this circuit.
+#
+# sub07 is NOT the stove, despite also being busy at dinner. It holds a permanent
+# 40-50 W standby and several discrete levels - 670 / 1212 / 1800 / 2280 W - with
+# bursts at lunch, dinner and 19:30. That is a kitchen power circuit feeding
+# several appliances. The 18:41-18:44 burst at 2050-2284 W for 2.75 min is a kettle.
+#
+# sub15 does short ~700-740 W bursts of 30-45 s at 15:55, 16:30, 18:16, 18:29,
+# 18:37, 18:43, 19:20 and 21:42. The clustering around water use hints at a
+# pressure/rainwater pump, but that is unverified - do not label it on a guess.
 #
 # sub05 was identified by correlating each circuit against the washing machine's
 # own plug monitor over a 45 min window: r = 0.97 on deltas, every other circuit
@@ -149,7 +167,7 @@ utility_meter:
   circuit_09: {source: sensor.msb_meter_energy_sub09, name: Circuit 09, cycle: daily}
   aircon: {source: sensor.msb_meter_energy_sub10, name: Aircon, cycle: daily}
   circuit_11: {source: sensor.msb_meter_energy_sub11, name: Circuit 11, cycle: daily}
-  circuit_12: {source: sensor.msb_meter_energy_sub12, name: Circuit 12, cycle: daily}
+  stove: {source: sensor.msb_meter_energy_sub12, name: Stove, cycle: daily}
   circuit_13: {source: sensor.msb_meter_energy_sub13, name: Circuit 13, cycle: daily}
   circuit_14: {source: sensor.msb_meter_energy_sub14, name: Circuit 14, cycle: daily}
   circuit_15: {source: sensor.msb_meter_energy_sub15, name: Circuit 15, cycle: daily}

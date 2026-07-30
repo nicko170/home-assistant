@@ -385,7 +385,7 @@ views:
                   - entity_id: sensor.msb_meter_power_sub11
                     name: Circuit 11
                   - entity_id: sensor.msb_meter_power_sub12
-                    name: Circuit 12
+                    name: Stove
                   - entity_id: sensor.msb_meter_power_sub13
                     name: Circuit 13
                   - entity_id: sensor.msb_meter_power_sub14
@@ -459,7 +459,7 @@ views:
               - entity: sensor.msb_meter_power_sub11
                 name: C11
               - entity: sensor.msb_meter_power_sub12
-                name: C12
+                name: Stove
               - entity: sensor.msb_meter_power_sub13
                 name: C13
               - entity: sensor.msb_meter_power_sub14
@@ -548,8 +548,8 @@ views:
                 name: Aircon
               - entity: sensor.circuit_11
                 name: Circuit 11
-              - entity: sensor.circuit_12
-                name: Circuit 12
+              - entity: sensor.stove
+                name: Stove
               - entity: sensor.circuit_13
                 name: Circuit 13
               - entity: sensor.circuit_14
