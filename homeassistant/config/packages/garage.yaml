@@ -1,22 +1,34 @@
-# Garage door position, corrected for sensor polarity.
-#
-# The BTHome reed sensor reports ON when the magnet is PRESENT - i.e. when the
-# door is CLOSED. Home Assistant's door/garage_door device classes use the
-# opposite convention: on = open. Left uncorrected the door reads open when it
-# is shut.
+# Garage door position.
 #
 # This template sensor is the single source of truth for door position. The
-# ESPHome cover reads it, and the dashboards display it. The raw BTHome entity
-# (binary_sensor.garage_door) is left alone so its battery, voltage,
-# temperature and humidity keep working - only the position is reinterpreted.
+# ESPHome cover reads it and the dashboards display it. The raw BTHome entity
+# (binary_sensor.garage_door) is left alone so its battery, voltage, temperature
+# and humidity keep working - only the position is reinterpreted here.
+#
+# POLARITY, corrected 2026-07-31 once the sensor was properly wired in.
+#
+# It previously reported ON with the magnet present, so this template inverted
+# it. After the rewire it reports the other way round, and the raw entity now
+# agrees with HA's own door convention:
+#
+#     raw OFF = magnet present = door CLOSED
+#     raw ON  = magnet away    = door OPEN
+#
+# So this is now a straight pass-through, not an inversion. Verified against the
+# physical door: raw sensor read OFF while the door was shut, yet the old
+# inverting template was reporting OPEN.
+#
+# If it ever reads backwards again, flip the 'on' below to 'off' rather than
+# adding a second inversion somewhere else - this is the only place position
+# polarity is decided.
 
 template:
   - binary_sensor:
       - name: Garage door position
         unique_id: garage_door_position
         device_class: garage_door
-        # Raw sensor OFF (magnet away) = door open.
-        state: "{{ is_state('binary_sensor.garage_door', 'off') }}"
+        # Pass-through: raw ON (magnet away) = door open.
+        state: "{{ is_state('binary_sensor.garage_door', 'on') }}"
         availability: >
           {{ states('binary_sensor.garage_door') not in
              ['unknown', 'unavailable', 'none'] }}
