@@ -14,9 +14,10 @@
 #
 # Current plan, from 2026-07-31: 98.80 c/day supply + 31.56 c/kWh, FIT 0.
 #
-# With FIT 0 every exported kWh earns nothing, so "solar value" is only ever the
-# SELF-CONSUMED portion - production minus export - valued at what it saved you
-# on import. Exported energy is worth exactly zero and is deliberately excluded.
+# With FIT 0 every exported kWh earns nothing, so "solar value" is defined as
+# consumption MINUS import - energy you used but did not buy - valued at the
+# import rate. See the note on Solar value today for why that beats the more
+# obvious production-minus-export.
 
 input_number:
   energy_price_kwh:
@@ -74,7 +75,14 @@ template:
             {% set supply = states('input_number.energy_supply_daily') | float(0.988) %}
             {{ '%.2f kWh x $%.4f = $%.2f, plus $%.2f supply' | format(kwh, rate, kwh * rate, supply) }}
 
-      # Solar is only worth anything when it is self-consumed, because FIT is 0.
+      # Solar is only worth anything when it displaces a purchase, because FIT is 0.
+      #
+      # Defined as consumption MINUS import - "energy you used but did not buy" -
+      # not as production minus export. The latter counts solar charged into the
+      # battery for tomorrow as today's saving, so it overstated: it read $7.88
+      # while the with/without-solar difference was $6.05. This definition is
+      # exactly cost_today_without_solar - cost_today, by construction, and is
+      # naturally correct across the battery's time-shifting.
       - name: Solar value today
         unique_id: solar_value_today
         device_class: monetary
@@ -82,13 +90,13 @@ template:
         unit_of_measurement: AUD
         icon: mdi:solar-power
         availability: >-
-          {{ states('sensor.inverter_today_production') | is_number
-             and states('sensor.inverter_today_energy_export') | is_number }}
+          {{ states('sensor.inverter_today_load_consumption') | is_number
+             and states('sensor.inverter_today_energy_import') | is_number }}
         state: >-
-          {% set prod = states('sensor.inverter_today_production') | float(0) %}
-          {% set exp = states('sensor.inverter_today_energy_export') | float(0) %}
+          {% set used = states('sensor.inverter_today_load_consumption') | float(0) %}
+          {% set imp = states('sensor.inverter_today_energy_import') | float(0) %}
           {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
-          {{ ([prod - exp, 0] | max * rate) | round(2) }}
+          {{ ([used - imp, 0] | max * rate) | round(2) }}
 
       # What today would have cost on grid alone - the counterfactual bill.
       - name: Cost today without solar

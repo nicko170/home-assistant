@@ -25,17 +25,39 @@ mkdir -p "$(dirname "$LOG")"
 
 log() { print -r -- "$(date '+%F %T') $*" >> "$LOG" }
 
+# Only FAILURES notify. A successful deploy is the normal case and a push for
+# every one of them is just noise - on a busy day that is dozens.
+#
+# Notification must still NEVER affect the script's exit status. curl failing
+# here would otherwise become the script's exit code and make launchd record a
+# good deploy as a failure, which is exactly what used to happen.
+#
+# The wait loop below is kept as a safety net: the failure path notifies after a
+# rollback without restarting, so HA is normally already up and the first probe
+# returns immediately. It only actually waits if the container was down and this
+# script had to start it.
 notify() {
-  [[ -r "$TOKEN_FILE" ]] || return 0
-  local token; token=$(<"$TOKEN_FILE")
-  [[ -n "$token" ]] || return 0
-  for target in mobile_app_nicks_iphone mobile_app_iphone; do
-    curl -s -m 10 -X POST \
-      -H "Authorization: Bearer $token" \
-      -H "Content-Type: application/json" \
-      -d "{\"title\":\"HA Deploy\",\"message\":\"$1\"}" \
-      "$HA_URL/api/services/notify/$target" >/dev/null 2>&1
-  done
+  {
+    [[ -r "$TOKEN_FILE" ]] || return 0
+    local token; token=$(<"$TOKEN_FILE")
+    [[ -n "$token" ]] || return 0
+
+    # wait up to ~90s for HA to accept requests again after a restart
+    local i
+    for i in {1..30}; do
+      curl -s -o /dev/null -m 3 "$HA_URL/api/" && break
+      sleep 3
+    done
+
+    for target in mobile_app_nicks_iphone mobile_app_iphone; do
+      curl -s -m 10 -X POST \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "{\"title\":\"HA Deploy\",\"message\":\"$1\"}" \
+        "$HA_URL/api/services/notify/$target" >/dev/null 2>&1
+    done
+  } always { : }
+  return 0
 }
 
 cd "$REPO" || { log "FATAL cannot cd $REPO"; exit 1 }
@@ -82,4 +104,8 @@ rm -f "$FAILED_FILE"
 SHORT=$(git rev-parse --short HEAD)
 SUBJECT=$(git log -1 --pretty=%s)
 log "deployed $SHORT ($SUBJECT)"
-notify "Deployed $SHORT: $SUBJECT"
+# Deliberately no notification on success - see the note above notify().
+
+# Explicit success. Without this the exit status is whatever the last command
+# returned, which is how a failed notification used to mask a good deploy.
+exit 0
