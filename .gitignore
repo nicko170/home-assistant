@@ -43,3 +43,9 @@ homeassistant/config/esphome/.esphome/
 # ---- macOS cruft ----
 .DS_Store
 **/.DS_Store
+
+# ---- HA runtime cache ----
+# Untracked files inside the deploy tree block `git merge --ff-only` if the repo
+# ever starts tracking the same path, which fails the deploy with "untracked
+# working tree files would be overwritten by merge". Ignore runtime dirs.
+homeassistant/config/.cache/
