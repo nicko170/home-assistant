@@ -209,7 +209,7 @@ views:
             icon: mdi:cash-multiple
 
           - type: markdown
-            content: >-
+            content: |-
               {% set c = states('sensor.cost_today') | float(0) %}
               {% set w = states('sensor.cost_today_without_solar') | float(0) %}
               {% set v = states('sensor.solar_value_today') | float(0) %}
@@ -572,7 +572,7 @@ views:
             heading_style: title
             icon: mdi:counter
           - type: markdown
-            content: >-
+            content: |-
               {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
               {% set rows = [
                 ('Light 1','sensor.light_1'), ('Light 2','sensor.light_2'),
@@ -580,10 +580,13 @@ views:
                 ('Garage','sensor.garage'), ('Kitchen','sensor.kitchen'),
                 ('Aircon','sensor.aircon'), ('Stove','sensor.stove'),
                 ('Water pump','sensor.water_pump'), ('Hot water','sensor.hot_water') ] %}
+              {# HA's Jinja sandbox forbids list.append(), so rows accumulate into a
+                 namespace STRING - assignment is allowed where a method call is not. #}
+              {% set ns = namespace(t='') %}
+              {% for name, ent in rows %}{% if states(ent) | is_number %}{% set ns.t = ns.t ~ ('| %s | %.2f | $%.2f |\n' | format(name, states(ent) | float(0), states(ent) | float(0) * rate)) %}{% endif %}{% endfor %}
               | Circuit | kWh | Cost |
               |---|---:|---:|
-              {% for name, ent in rows %}{% if states(ent) | is_number %}| {{ name }} | {{ '%.2f' | format(states(ent) | float(0)) }} | ${{ '%.2f' | format(states(ent) | float(0) * rate) }} |
-              {% endif %}{% endfor %}
+              {{ ns.t }}
 
               *Identified circuits only, at {{ '%.2f' | format(rate * 100) }} c/kWh. This is what each
               circuit would cost if every kWh came from the grid - solar and battery mean you did not
@@ -708,13 +711,18 @@ views:
             heading_style: title
             icon: mdi:washing-machine
           - type: markdown
-            content: >-
+            content: |-
               {% set cycles = state_attr('sensor.washer_cycle_history','cycles') %}
               {% if cycles %}
+              {# list.append() is blocked by HA's template sandbox; concatenate instead. #}
+              {% set ns = namespace(t='') %}
+              {% for c in cycles | reverse %}{% set ns.t = ns.t ~ ('| %s | %s | %d min | %.2f kWh |\n' | format(
+                  as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true),
+                  as_timestamp(c.end) | timestamp_custom('%H:%M', true),
+                  c.mins | int, c.kwh | float(0))) %}{% endfor %}
               | Started | Finished | Run | Energy |
               |---|---|---:|---:|
-              {% for c in cycles | reverse %}| {{ as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true) }} | {{ as_timestamp(c.end) | timestamp_custom('%H:%M', true) }} | {{ c.mins | int }} min | {{ '%.2f' | format(c.kwh | float(0)) }} kWh |
-              {% endfor %}
+              {{ ns.t }}
 
               **{{ cycles | length }} cycles**, total {{ '%.1f' | format(cycles | map(attribute='kwh') | map('float',0) | sum) }} kWh,
               average {{ (cycles | map(attribute='mins') | map('int') | sum / (cycles | length)) | round(0) }} min
@@ -730,13 +738,18 @@ views:
             heading_style: title
             icon: mdi:tumble-dryer
           - type: markdown
-            content: >-
+            content: |-
               {% set cycles = state_attr('sensor.dryer_cycle_history','cycles') %}
               {% if cycles %}
+              {# list.append() is blocked by HA's template sandbox; concatenate instead. #}
+              {% set ns = namespace(t='') %}
+              {% for c in cycles | reverse %}{% set ns.t = ns.t ~ ('| %s | %s | %d min | %.2f kWh |\n' | format(
+                  as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true),
+                  as_timestamp(c.end) | timestamp_custom('%H:%M', true),
+                  c.mins | int, c.kwh | float(0))) %}{% endfor %}
               | Started | Finished | Run | Energy |
               |---|---|---:|---:|
-              {% for c in cycles | reverse %}| {{ as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true) }} | {{ as_timestamp(c.end) | timestamp_custom('%H:%M', true) }} | {{ c.mins | int }} min | {{ '%.2f' | format(c.kwh | float(0)) }} kWh |
-              {% endfor %}
+              {{ ns.t }}
 
               **{{ cycles | length }} cycles**, total {{ '%.1f' | format(cycles | map(attribute='kwh') | map('float',0) | sum) }} kWh,
               average {{ (cycles | map(attribute='mins') | map('int') | sum / (cycles | length)) | round(0) }} min
