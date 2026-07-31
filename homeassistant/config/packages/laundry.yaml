@@ -137,12 +137,20 @@ template:
         # Sensors declaring a unit must hold a NUMBER. Returning the string
         # "unknown" fails HA's validator, so absence is expressed via
         # availability instead. cycle_start_energy is 0 until a real cycle runs.
+        #
+        # end > start is also required. While a new cycle is RUNNING, cycle_start
+        # has already moved but cycle_end still holds the previous cycle's, so the
+        # pair no longer describes one cycle and the subtraction goes negative.
+        # Reporting 0 min there looks like a real measurement; unavailable is
+        # honest. The cycle history sensors below keep the completed record.
         availability: >
           {{ states('input_number.washer_cycle_start_energy') | float(0) > 0
               and states('input_datetime.washer_cycle_start') not in
                   ['unknown', 'unavailable', '']
               and states('input_datetime.washer_cycle_end') not in
-                  ['unknown', 'unavailable', ''] }}
+                  ['unknown', 'unavailable', '']
+              and as_timestamp(states('input_datetime.washer_cycle_end'))
+                  > as_timestamp(states('input_datetime.washer_cycle_start')) }}
         state: >
           {% set m = ((as_timestamp(states('input_datetime.washer_cycle_end'))
                       - as_timestamp(states('input_datetime.washer_cycle_start'))) / 60) | round(0) %}
@@ -167,12 +175,20 @@ template:
         # Sensors declaring a unit must hold a NUMBER. Returning the string
         # "unknown" fails HA's validator, so absence is expressed via
         # availability instead. cycle_start_energy is 0 until a real cycle runs.
+        #
+        # end > start is also required. While a new cycle is RUNNING, cycle_start
+        # has already moved but cycle_end still holds the previous cycle's, so the
+        # pair no longer describes one cycle and the subtraction goes negative.
+        # Reporting 0 min there looks like a real measurement; unavailable is
+        # honest. The cycle history sensors below keep the completed record.
         availability: >
           {{ states('input_number.dryer_cycle_start_energy') | float(0) > 0
               and states('input_datetime.dryer_cycle_start') not in
                   ['unknown', 'unavailable', '']
               and states('input_datetime.dryer_cycle_end') not in
-                  ['unknown', 'unavailable', ''] }}
+                  ['unknown', 'unavailable', '']
+              and as_timestamp(states('input_datetime.dryer_cycle_end'))
+                  > as_timestamp(states('input_datetime.dryer_cycle_start')) }}
         state: >
           {% set m = ((as_timestamp(states('input_datetime.dryer_cycle_end'))
                       - as_timestamp(states('input_datetime.dryer_cycle_start'))) / 60) | round(0) %}
