@@ -190,6 +190,66 @@ template:
           {% set d = (states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - e0 %}
           {{ (d if d > 0 else 0) | round(3) }}
 
+  # -----------------------------------------------------------------------
+  # Cycle history: one record per completed cycle, appended to this sensor's own
+  # attributes, keeping the last 40.
+  #
+  # Duration and energy are computed inline from the input_datetime/input_number
+  # helpers rather than read from sensor.<x>_last_cycle_duration/energy. Those
+  # are ordinary template sensors updating asynchronously, so reading them from
+  # a template firing on the same state change is a race - it would record the
+  # PREVIOUS cycle's numbers.
+  #
+  # NOTE these are extra items in the SAME `template:` list above. A second
+  # top-level `template:` key would silently replace the first, since YAML lets
+  # the later duplicate win - that would delete the four sensors above.
+  #
+  # This accumulates only from deployment; earlier cycles are not backfilled.
+  # The recorder still holds them, so the Laundry tab also carries a logbook.
+  - trigger:
+      - trigger: state
+        entity_id: input_select.washer_state
+        to: finished
+    sensor:
+      - name: Washer cycle history
+        unique_id: washer_cycle_history
+        icon: mdi:washing-machine
+        state: "{{ (this.attributes.get('cycles', []) | length) + 1 }}"
+        attributes:
+          cycles: >
+            {% set st = states('input_datetime.washer_cycle_start') %}
+            {% set en = states('input_datetime.washer_cycle_end') %}
+            {% set ok = st not in ['unknown','unavailable',''] and en not in ['unknown','unavailable',''] %}
+            {% set mins = (((as_timestamp(en) - as_timestamp(st)) / 60) | round(0)) if ok else 0 %}
+            {% set kwh = ((states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0))
+                          - (states('input_number.washer_cycle_start_energy') | float(0))) | round(3) %}
+            {% set rec = {'start': st, 'end': en,
+                          'mins': (mins if mins > 0 else 0),
+                          'kwh': (kwh if kwh > 0 else 0)} %}
+            {{ (this.attributes.get('cycles', []) + [rec])[-40:] }}
+
+  - trigger:
+      - trigger: state
+        entity_id: input_select.dryer_state
+        to: finished
+    sensor:
+      - name: Dryer cycle history
+        unique_id: dryer_cycle_history
+        icon: mdi:tumble-dryer
+        state: "{{ (this.attributes.get('cycles', []) | length) + 1 }}"
+        attributes:
+          cycles: >
+            {% set st = states('input_datetime.dryer_cycle_start') %}
+            {% set en = states('input_datetime.dryer_cycle_end') %}
+            {% set ok = st not in ['unknown','unavailable',''] and en not in ['unknown','unavailable',''] %}
+            {% set mins = (((as_timestamp(en) - as_timestamp(st)) / 60) | round(0)) if ok else 0 %}
+            {% set kwh = ((states('sensor.power_monitor_4_f27381_total_energy') | float(0))
+                          - (states('input_number.dryer_cycle_start_energy') | float(0))) | round(3) %}
+            {% set rec = {'start': st, 'end': en,
+                          'mins': (mins if mins > 0 else 0),
+                          'kwh': (kwh if kwh > 0 else 0)} %}
+            {{ (this.attributes.get('cycles', []) + [rec])[-40:] }}
+
 # ---------------------------------------------------------------------------
 # State machine: idle -> running -> finished -> idle
 #

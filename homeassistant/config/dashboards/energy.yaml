@@ -4,7 +4,7 @@
 # Feed-in tariff is 0, so export is waste, not income. Self-consumption is
 # the headline metric here and exported energy is framed as a loss.
 #
-# Tabs: Now / Today / Circuits / Inverter. Circuits lives here rather than as
+# Tabs: Now / Today / Circuits / Laundry / Inverter. Circuits lives here rather than as
 # its own sidebar dashboard - it is a breakdown of this same data, and Energy +
 # Power + Circuits in the sidebar was three entries for one subject.
 
@@ -600,6 +600,139 @@ views:
                 name: Sum of circuits
               - entity: sensor.inverter_load_power
                 name: Inverter load (cross-check)
+  # =================================================================
+  # Laundry. The cycle tables are built from the accumulating history
+  # sensors in packages/laundry.yaml, which only hold cycles completed
+  # since they were deployed - the logbook below covers anything older,
+  # straight from the recorder.
+  - title: Laundry
+    path: laundry
+    type: sections
+    max_columns: 2
+    icon: mdi:washing-machine
+    badges:
+      - type: entity
+        entity: input_select.washer_state
+        name: Washer
+      - type: entity
+        entity: input_select.dryer_state
+        name: Dryer
+      - type: entity
+        entity: sensor.laundry_and_lounge
+        name: Circuit today
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Washer cycles
+            heading_style: title
+            icon: mdi:washing-machine
+          - type: markdown
+            content: >-
+              {% set cycles = state_attr('sensor.washer_cycle_history','cycles') %}
+              {% if cycles %}
+              | Started | Finished | Run | Energy |
+              |---|---|---:|---:|
+              {% for c in cycles | reverse %}| {{ as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true) }} | {{ as_timestamp(c.end) | timestamp_custom('%H:%M', true) }} | {{ c.mins | int }} min | {{ '%.2f' | format(c.kwh | float(0)) }} kWh |
+              {% endfor %}
+
+              **{{ cycles | length }} cycles**, total {{ '%.1f' | format(cycles | map(attribute='kwh') | map('float',0) | sum) }} kWh,
+              average {{ (cycles | map(attribute='mins') | map('int') | sum / (cycles | length)) | round(0) }} min
+              {% else %}
+              No completed washer cycles recorded yet. This table fills as cycles
+              finish; see the logbook below for history from before it existed.
+              {% endif %}
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Dryer cycles
+            heading_style: title
+            icon: mdi:tumble-dryer
+          - type: markdown
+            content: >-
+              {% set cycles = state_attr('sensor.dryer_cycle_history','cycles') %}
+              {% if cycles %}
+              | Started | Finished | Run | Energy |
+              |---|---|---:|---:|
+              {% for c in cycles | reverse %}| {{ as_timestamp(c.start) | timestamp_custom('%a %d %b %H:%M', true) }} | {{ as_timestamp(c.end) | timestamp_custom('%H:%M', true) }} | {{ c.mins | int }} min | {{ '%.2f' | format(c.kwh | float(0)) }} kWh |
+              {% endfor %}
+
+              **{{ cycles | length }} cycles**, total {{ '%.1f' | format(cycles | map(attribute='kwh') | map('float',0) | sum) }} kWh,
+              average {{ (cycles | map(attribute='mins') | map('int') | sum / (cycles | length)) | round(0) }} min
+              {% else %}
+              No completed dryer cycles recorded yet.
+              {% endif %}
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Power traces
+            heading_style: title
+            icon: mdi:chart-line
+          - type: custom:apexcharts-card
+            graph_span: 3d
+            header:
+              show: true
+              title: Washer and dryer draw (3 days)
+              show_states: true
+              colorize_states: true
+            yaxis:
+              - min: 0
+            series:
+              - entity: sensor.power_monitor_3_f257d8_f257d8_power
+                name: Washer
+                type: area
+                curve: stepline
+                opacity: 0.4
+                stroke_width: 1
+                group_by:
+                  func: max
+                  duration: 5min
+              - entity: sensor.power_monitor_4_f27381_power
+                name: Dryer
+                type: area
+                curve: stepline
+                opacity: 0.4
+                stroke_width: 1
+                group_by:
+                  func: max
+                  duration: 5min
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Full history from the recorder
+            heading_style: subtitle
+            icon: mdi:history
+          - type: logbook
+            target:
+              entity_id:
+                - input_select.washer_state
+                - input_select.dryer_state
+            hours_to_show: 168
+
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Detection thresholds
+            heading_style: subtitle
+            icon: mdi:tune
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: input_number.washer_start_threshold
+              - entity: input_number.washer_stop_threshold
+              - entity: input_number.washer_stop_minutes
+              - type: divider
+              - entity: input_number.dryer_start_threshold
+              - entity: input_number.dryer_stop_threshold
+              - entity: input_number.dryer_stop_minutes
+
   - title: Inverter
     path: inverter
     type: sections
