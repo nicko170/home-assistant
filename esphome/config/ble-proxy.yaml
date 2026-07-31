@@ -1,0 +1,110 @@
+# Dedicated Bluetooth proxy - flash to any spare ESP32.
+#
+# WHY THIS EXISTS
+# ---------------
+# The house had exactly ONE BLE scanner: the garage door ESP32, which is also
+# running the door relay, the cover and an API connection. Measured 2026-07-31,
+# the four BTHome sensors reached it at:
+#
+#     -67 dBm  garage door sensor (3 m away)
+#     -73 dBm
+#     -86 dBm  marginal
+#     -98 dBm  at the noise floor
+#
+# and each produced only 1-2 advertisements in 45 seconds. The result was every
+# BTHome sensor flapping in and out of `unavailable`: gap distributions were
+# bimodal - garage 57% under 7 min but 24% over 30 min, lounge 55%/31%, and aria
+# only 17% under 7 min with 52% over 30 min. Bimodal is the signature of MISSED
+# advertisements; a slow heartbeat would cluster at one interval. Signal strength
+# tracks it exactly, aria being both the furthest and the worst.
+#
+# Contact events were still arriving - 26 genuine door transitions in 7 days -
+# because these sensors burst several advertisements on a state change. It is the
+# periodic heartbeat that gets missed, which is what drives the availability
+# flapping. More receivers is the fix; nothing is wrong with the sensors.
+#
+# PLACEMENT
+# ---------
+# Put this where the weak sensors are, not where it is convenient. The -86 and
+# -98 dBm devices are the lounge/bedroom/aria cluster, so somewhere central to
+# those is worth far more than another unit near the garage. BLE advertisements
+# are received by every scanner in range and HA de-duplicates them, so proxies
+# overlap harmlessly - more is strictly better.
+#
+# USAGE
+#   1. cp ble-proxy.yaml ble-proxy-lounge.yaml
+#   2. edit the two substitutions below
+#   3. add ble_proxy_lounge_api_key / _ota_password to secrets.yaml
+#        python3 -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+#        python3 -c "import secrets; print(secrets.token_hex(16))"
+#   4. flash FROM THE MAC MINI - see README.md, the laptop CLI version is too old
+#        docker run --rm --network host -v ~/ha/esphome/config:/config \
+#          ghcr.io/esphome/esphome:stable run ble-proxy-lounge.yaml
+#
+# Deliberately minimal: no relays, no sensors, no display. A proxy that does
+# nothing else spends all its radio time listening, which is the entire point.
+
+substitutions:
+  device_name: ble-proxy-lounge
+  friendly_name: BLE Proxy Lounge
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+  # BLE advertisement logging is extremely noisy and costs airtime.
+  logs:
+    esp32_ble_tracker: WARN
+
+api:
+  encryption:
+    key: !secret ble_proxy_lounge_api_key
+
+ota:
+  - platform: esphome
+    password: !secret ble_proxy_lounge_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  ap:
+    ssid: ${device_name}-fallback
+    password: !secret ble_proxy_lounge_ota_password
+
+captive_portal:
+
+# PASSIVE scanning. BTHome is advertisement-only, so nothing here needs to
+# connect, and passive avoids transmitting scan requests on a radio the ESP32
+# already shares with WiFi. window/interval gives a ~94% listening duty cycle,
+# which is what catches infrequent advertisements.
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+    interval: 320ms
+    window: 300ms
+
+bluetooth_proxy:
+  active: false
+
+sensor:
+  - platform: wifi_signal
+    name: WiFi signal
+    update_interval: 120s
+    entity_category: diagnostic
+  - platform: uptime
+    name: Uptime
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP address
+      entity_category: diagnostic
