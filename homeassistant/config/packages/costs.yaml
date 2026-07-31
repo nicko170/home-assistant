@@ -1,0 +1,149 @@
+# What the electricity actually costs.
+#
+# HA's Energy Dashboard does create its own cost sensors once a price is set
+# (sensor.inverter_total_energy_import_cost and friends), but those only start
+# accumulating from the moment the tariff was configured - they were all 0.0 the
+# day this was written. These template sensors compute from the energy counters
+# instead, so they are correct immediately and keep working if the tariff changes.
+#
+# The rate lives in input_numbers rather than being hardcoded, so a plan change
+# is two UI edits instead of hunting literals across packages and dashboards.
+# Keep them in step with the Energy Dashboard grid source
+# (number_energy_price / cost_adjustment_day), which is configured separately in
+# .storage and is NOT in this repo.
+#
+# Current plan, from 2026-07-31: 98.80 c/day supply + 31.56 c/kWh, FIT 0.
+#
+# With FIT 0 every exported kWh earns nothing, so "solar value" is only ever the
+# SELF-CONSUMED portion - production minus export - valued at what it saved you
+# on import. Exported energy is worth exactly zero and is deliberately excluded.
+
+input_number:
+  energy_price_kwh:
+    name: Energy price
+    min: 0
+    max: 2
+    step: 0.0001
+    unit_of_measurement: AUD/kWh
+    icon: mdi:cash
+    mode: box
+  energy_supply_daily:
+    name: Daily supply charge
+    min: 0
+    max: 10
+    step: 0.001
+    unit_of_measurement: AUD/day
+    icon: mdi:calendar-clock
+    mode: box
+
+# Monthly counters so month-to-date cost is possible. The inverter's own
+# today_* sensors reset daily and there is no monthly equivalent.
+utility_meter:
+  import_monthly:
+    source: sensor.inverter_total_energy_import
+    name: Import monthly
+    cycle: monthly
+  consumption_monthly:
+    source: sensor.inverter_total_load_consumption
+    name: Consumption monthly
+    cycle: monthly
+  production_monthly:
+    source: sensor.inverter_total_production
+    name: Production monthly
+    cycle: monthly
+
+template:
+  - sensor:
+      # ---- today -------------------------------------------------------
+      - name: Cost today
+        unique_id: cost_today
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:cash-clock
+        availability: "{{ states('sensor.inverter_today_energy_import') | is_number }}"
+        state: >-
+          {% set kwh = states('sensor.inverter_today_energy_import') | float(0) %}
+          {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+          {% set supply = states('input_number.energy_supply_daily') | float(0.988) %}
+          {{ (kwh * rate + supply) | round(2) }}
+        attributes:
+          breakdown: >-
+            {% set kwh = states('sensor.inverter_today_energy_import') | float(0) %}
+            {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+            {% set supply = states('input_number.energy_supply_daily') | float(0.988) %}
+            {{ '%.2f kWh x $%.4f = $%.2f, plus $%.2f supply' | format(kwh, rate, kwh * rate, supply) }}
+
+      # Solar is only worth anything when it is self-consumed, because FIT is 0.
+      - name: Solar value today
+        unique_id: solar_value_today
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:solar-power
+        availability: >-
+          {{ states('sensor.inverter_today_production') | is_number
+             and states('sensor.inverter_today_energy_export') | is_number }}
+        state: >-
+          {% set prod = states('sensor.inverter_today_production') | float(0) %}
+          {% set exp = states('sensor.inverter_today_energy_export') | float(0) %}
+          {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+          {{ ([prod - exp, 0] | max * rate) | round(2) }}
+
+      # What today would have cost on grid alone - the counterfactual bill.
+      - name: Cost today without solar
+        unique_id: cost_today_without_solar
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:transmission-tower
+        availability: "{{ states('sensor.inverter_today_load_consumption') | is_number }}"
+        state: >-
+          {% set used = states('sensor.inverter_today_load_consumption') | float(0) %}
+          {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+          {% set supply = states('input_number.energy_supply_daily') | float(0.988) %}
+          {{ (used * rate + supply) | round(2) }}
+
+      # ---- month to date ----------------------------------------------
+      - name: Cost month to date
+        unique_id: cost_month_to_date
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:calendar-month
+        availability: "{{ states('sensor.import_monthly') | is_number }}"
+        state: >-
+          {% set kwh = states('sensor.import_monthly') | float(0) %}
+          {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+          {% set supply = states('input_number.energy_supply_daily') | float(0.988) %}
+          {{ (kwh * rate + supply * now().day) | round(2) }}
+
+      - name: Solar value month to date
+        unique_id: solar_value_month_to_date
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:solar-power-variant
+        availability: >-
+          {{ states('sensor.production_monthly') | is_number
+             and states('sensor.consumption_monthly') | is_number
+             and states('sensor.import_monthly') | is_number }}
+        state: >-
+          {% set used = states('sensor.consumption_monthly') | float(0) %}
+          {% set imp = states('sensor.import_monthly') | float(0) %}
+          {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+          {{ ([used - imp, 0] | max * rate) | round(2) }}
+
+      # Straight-line projection: month-to-date scaled to a full month. Early in
+      # a month this is noisy by construction, so it is labelled a projection.
+      - name: Cost projected this month
+        unique_id: cost_projected_month
+        device_class: monetary
+        state_class: total
+        unit_of_measurement: AUD
+        icon: mdi:chart-line
+        availability: "{{ states('sensor.cost_month_to_date') | is_number }}"
+        state: >-
+          {% set mtd = states('sensor.cost_month_to_date') | float(0) %}
+          {% set days_in = (now().replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1) %}
+          {{ (mtd / now().day * days_in.day) | round(2) }}

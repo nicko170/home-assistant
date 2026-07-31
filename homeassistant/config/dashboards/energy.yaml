@@ -201,6 +201,59 @@ views:
 
       # -------------------------------------------------------------
       - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: What it costs
+            heading_style: title
+            icon: mdi:cash-multiple
+
+          - type: markdown
+            content: >-
+              {% set c = states('sensor.cost_today') | float(0) %}
+              {% set w = states('sensor.cost_today_without_solar') | float(0) %}
+              {% set v = states('sensor.solar_value_today') | float(0) %}
+              {% set mtd = states('sensor.cost_month_to_date') | float(0) %}
+              {% set proj = states('sensor.cost_projected_this_month') | float(0) %}
+              {% set vm = states('sensor.solar_value_month_to_date') | float(0) %}
+              ### Today
+
+              | | |
+              |---|---:|
+              | Grid cost today | **${{ '%.2f' | format(c) }}** |
+              | Would have cost without solar | ${{ '%.2f' | format(w) }} |
+              | Solar saved you | **${{ '%.2f' | format(v) }}** |
+
+              ### This month
+
+              | | |
+              |---|---:|
+              | Cost so far | **${{ '%.2f' | format(mtd) }}** |
+              | Solar saved so far | ${{ '%.2f' | format(vm) }} |
+              | Projected full month | ${{ '%.2f' | format(proj) }} |
+
+              *Flat rate {{ '%.2f' | format(states('input_number.energy_price_kwh') | float(0) * 100) }} c/kWh
+              + {{ '%.2f' | format(states('input_number.energy_supply_daily') | float(0) * 100) }} c/day supply,
+              feed-in 0. Only self-consumed solar is counted as a saving - exported energy earns nothing.*
+
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.cost_today
+                name: Cost today
+              - entity: sensor.solar_value_today
+                name: Solar value today
+              - entity: sensor.cost_month_to_date
+                name: Month to date
+              - entity: sensor.cost_projected_this_month
+                name: Projected this month
+              - type: section
+                label: Tariff - keep in step with the Energy Dashboard
+              - entity: input_number.energy_price_kwh
+              - entity: input_number.energy_supply_daily
+
+      # -------------------------------------------------------------
+      - type: grid
         cards:
           - type: heading
             heading: Self-consumption
@@ -518,6 +571,23 @@ views:
             heading: Energy today
             heading_style: title
             icon: mdi:counter
+          - type: markdown
+            content: >-
+              {% set rate = states('input_number.energy_price_kwh') | float(0.3156) %}
+              {% set rows = [
+                ('Light 1','sensor.light_1'), ('Light 2','sensor.light_2'),
+                ('Light 3','sensor.light_3'), ('Laundry + lounge','sensor.laundry_and_lounge'),
+                ('Garage','sensor.garage'), ('Kitchen','sensor.kitchen'),
+                ('Aircon','sensor.aircon'), ('Stove','sensor.stove'),
+                ('Water pump','sensor.water_pump'), ('Hot water','sensor.hot_water') ] %}
+              | Circuit | kWh | Cost |
+              |---|---:|---:|
+              {% for name, ent in rows %}{% if states(ent) | is_number %}| {{ name }} | {{ '%.2f' | format(states(ent) | float(0)) }} | ${{ '%.2f' | format(states(ent) | float(0) * rate) }} |
+              {% endif %}{% endfor %}
+
+              *Identified circuits only, at {{ '%.2f' | format(rate * 100) }} c/kWh. This is what each
+              circuit would cost if every kWh came from the grid - solar and battery mean you did not
+              pay that for all of it.*
 
           - type: entities
             show_header_toggle: false
