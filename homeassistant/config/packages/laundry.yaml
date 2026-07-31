@@ -94,6 +94,19 @@ input_datetime:
     name: Dryer cycle start
     has_date: true
     has_time: true
+  # The END of a cycle has to be recorded explicitly. It used to be inferred
+  # from input_select.<x>_state.last_changed, but HA resets last_changed to the
+  # restart time on every restart, so the duration inflated with every deploy -
+  # the dryer showed 1882 min for a cycle that really took 353. An
+  # input_datetime survives restarts; last_changed does not.
+  washer_cycle_end:
+    name: Washer cycle end
+    has_date: true
+    has_time: true
+  dryer_cycle_end:
+    name: Dryer cycle end
+    has_date: true
+    has_time: true
 
 input_select:
   washer_state:
@@ -127,9 +140,11 @@ template:
         availability: >
           {{ states('input_number.washer_cycle_start_energy') | float(0) > 0
               and states('input_datetime.washer_cycle_start') not in
+                  ['unknown', 'unavailable', '']
+              and states('input_datetime.washer_cycle_end') not in
                   ['unknown', 'unavailable', ''] }}
         state: >
-          {% set m = ((as_timestamp(states.input_select.washer_state.last_changed)
+          {% set m = ((as_timestamp(states('input_datetime.washer_cycle_end'))
                       - as_timestamp(states('input_datetime.washer_cycle_start'))) / 60) | round(0) %}
           {{ m if m >= 0 else 0 }}
 
@@ -155,9 +170,11 @@ template:
         availability: >
           {{ states('input_number.dryer_cycle_start_energy') | float(0) > 0
               and states('input_datetime.dryer_cycle_start') not in
+                  ['unknown', 'unavailable', '']
+              and states('input_datetime.dryer_cycle_end') not in
                   ['unknown', 'unavailable', ''] }}
         state: >
-          {% set m = ((as_timestamp(states.input_select.dryer_state.last_changed)
+          {% set m = ((as_timestamp(states('input_datetime.dryer_cycle_end'))
                       - as_timestamp(states('input_datetime.dryer_cycle_start'))) / 60) | round(0) %}
           {{ m if m >= 0 else 0 }}
 
@@ -236,6 +253,11 @@ automation:
             {% if s in ['unknown','unavailable',''] %}?{% else %}{{ ((now().timestamp() - as_timestamp(s)) / 60) | round(0) }}{% endif %}
           kwh: >-
             {{ (((states('sensor.power_monitor_3_f257d8_f257d8_total_energy') | float(0)) - (states('input_number.washer_cycle_start_energy') | float(0))) | round(3)) }}
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.washer_cycle_end
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.washer_state
@@ -259,11 +281,22 @@ automation:
   - id: laundry_washer_reset
     alias: "Laundry: washer back to idle"
     mode: single
+    # A `for:` on a state trigger is NOT restart-proof - HA resets last_changed
+    # to the restart time, so the countdown starts again and on a day of frequent
+    # deploys it never elapses. The washer sat in `finished` for over a day because
+    # of exactly that. Polling against the recorded end time survives restarts.
     triggers:
-      - trigger: state
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: state
         entity_id: input_select.washer_state
-        to: finished
-        for: "06:00:00"
+        state: finished
+      - condition: template
+        value_template: >
+          {% set e = states('input_datetime.washer_cycle_end') %}
+          {{ e not in ['unknown','unavailable','']
+             and (now().timestamp() - as_timestamp(e)) > 21600 }}
     actions:
       - action: input_select.select_option
         target:
@@ -323,6 +356,11 @@ automation:
             {% if s in ['unknown','unavailable',''] %}?{% else %}{{ ((now().timestamp() - as_timestamp(s)) / 60) | round(0) }}{% endif %}
           kwh: >-
             {{ (((states('sensor.power_monitor_4_f27381_total_energy') | float(0)) - (states('input_number.dryer_cycle_start_energy') | float(0))) | round(3)) }}
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.dryer_cycle_end
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       - action: input_select.select_option
         target:
           entity_id: input_select.dryer_state
@@ -346,11 +384,22 @@ automation:
   - id: laundry_dryer_reset
     alias: "Laundry: dryer back to idle"
     mode: single
+    # A `for:` on a state trigger is NOT restart-proof - HA resets last_changed
+    # to the restart time, so the countdown starts again and on a day of frequent
+    # deploys it never elapses. The dryer sat in `finished` for over a day because
+    # of exactly that. Polling against the recorded end time survives restarts.
     triggers:
-      - trigger: state
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: state
         entity_id: input_select.dryer_state
-        to: finished
-        for: "06:00:00"
+        state: finished
+      - condition: template
+        value_template: >
+          {% set e = states('input_datetime.dryer_cycle_end') %}
+          {{ e not in ['unknown','unavailable','']
+             and (now().timestamp() - as_timestamp(e)) > 21600 }}
     actions:
       - action: input_select.select_option
         target:
