@@ -4,6 +4,15 @@
 # Feed-in tariff is 0, so export is waste, not income. Self-consumption is
 # the headline metric here and exported energy is framed as a loss.
 #
+# Tariff from 2026-07-31: 98.80 c/day supply + 31.56 c/kWh flat, FIT 0. Chosen
+# over a 117 c/day TOU plan (40.70 peak 15:00-20:59 / 21.89 off-peak). On the
+# import measured at the time TOU was $57/yr cheaper, but that lead needs
+# off-peak import above ~2 kWh/day, and both summer solar and moving the hot
+# water into daylight push it below that. The flat rate is also indifferent to
+# WHEN power is used, so a flat battery on a cloudy evening cannot land import
+# at 40.70 c/kWh. Old plan was 166 c/day + 66 c/kWh, ~$1,507/yr, against
+# ~$790/yr here.
+#
 # Tabs: Now / Today / Circuits / Laundry / Inverter. Circuits lives here rather than as
 # its own sidebar dashboard - it is a breakdown of this same data, and Energy +
 # Power + Circuits in the sidebar was three entries for one subject.
@@ -221,7 +230,7 @@ views:
             primary: Value given away today
             secondary: >-
               {% set e = states('sensor.inverter_today_energy_export') | float(0) %}
-              {{ e | round(2) }} kWh exported, about ${{ (e * 0.37246) | round(2) }}
+              {{ e | round(2) }} kWh exported, about ${{ (e * 0.3156) | round(2) }}
               if it had offset import instead
             icon: mdi:cash-remove
             icon_color: red
