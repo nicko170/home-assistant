@@ -73,6 +73,14 @@ web_server:
 # active back to true if something needs HA to CONNECT through the proxy
 # (BLE locks, Switchbot and similar) - nothing here does.
 #
+# FLASHING THIS DEVICE: build from the mac mini, not the laptop.
+#   docker run --rm --network host -v ~/ha/esphome/config:/config \
+#     ghcr.io/esphome/esphome:stable run garage-door.yaml --device 192.168.15.17
+# The laptop CLI is 2025.5.2 while this device runs 2026.7.2, and OTA from the
+# older client fails with "Error auth: Authentication invalid. Is the password
+# correct?" - which is misleading, because the password is fine. The mac mini's
+# container image matches the device version and uploads first time.
+#
 # The near-100% duty cycle (300 of every 320 ms) is what catches infrequent
 # advertisements reliably.
 esp32_ble_tracker:
