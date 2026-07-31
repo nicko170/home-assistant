@@ -1,12 +1,20 @@
 # Cameras - five live cameras plus the Reolink doorbell.
 #
-# .243 "Front Right" is absent by design: dead hardware, no PoE draw, link
-# down since ~June 2026. It needs physical repair, not configuration.
+# The camera at .243 is absent by design: dead hardware, no PoE draw, link down
+# since ~June 2026. It needs physical repair, not configuration. It used to be
+# labelled "Front Right", but that name now belongs to .242 - what .243 actually
+# looked at is unconfirmed, so it is referred to by address only.
 #
-# Naming note: the Reolink CX820 at .245 self-reports as "Front Left"
-# (camera.front_left_fluent) and the Hikvision at .241 was named "Hik Front
-# Left" to disambiguate. One of those labels is stale - confirm which is
-# physically where and rename the device, not this file.
+# Camera names were corrected on 2026-07-31 against their actual physical
+# views. The old labels were inherited from whatever each camera self-reported
+# and several were simply wrong:
+#     .245 Reolink  "Front Left"     -> Back Yard
+#     .242 Hik      "Garage"         -> Front Right
+#     .241 Hik      "Hik Front Left" -> Front Left   (was already correct)
+#     .244 Hik      "Hik 244"        -> Garage Right
+#     .240 Reolink  "Doorbell"       -> unchanged
+# Names now live in the HA device registry (name_by_user), so these labels and
+# the entity ids follow from there rather than being overridden per card.
 
 views:
   # =================================================================
@@ -46,13 +54,13 @@ views:
             heading_style: subtitle
             icon: mdi:video
           - type: picture-glance
-            title: Front left (Reolink CX820)
-            camera_image: camera.front_left_fluent
+            title: Back yard (Reolink CX820)
+            camera_image: camera.back_yard_fluent
             camera_view: live
             entities:
-              - entity: binary_sensor.front_left_motion
+              - entity: binary_sensor.back_yard_motion
                 name: Motion
-              - entity: binary_sensor.front_left_person
+              - entity: binary_sensor.back_yard_person
                 name: Person
 
       - type: grid
@@ -62,25 +70,25 @@ views:
             heading_style: subtitle
             icon: mdi:video-outline
           - type: picture-glance
-            title: Garage
-            camera_image: camera.garage_mainstream
+            title: Front right
+            camera_image: camera.front_right_mainstream
             camera_view: live
             entities:
-              - entity: binary_sensor.garage_motion_alarm
+              - entity: binary_sensor.front_right_motion_alarm
                 name: Motion
           - type: picture-glance
-            title: Hik front left
-            camera_image: camera.hik_front_left_mainstream
+            title: Front left
+            camera_image: camera.front_left_mainstream
             camera_view: live
             entities:
-              - entity: binary_sensor.hik_front_left_motion_alarm
+              - entity: binary_sensor.front_left_motion_alarm
                 name: Motion
           - type: picture-glance
-            title: Hik 244
-            camera_image: camera.hik_244_mainstream
+            title: Garage right
+            camera_image: camera.garage_right_mainstream
             camera_view: live
             entities:
-              - entity: binary_sensor.hik_244_motion_alarm
+              - entity: binary_sensor.garage_right_motion_alarm
                 name: Motion
 
   # =================================================================
@@ -110,20 +118,20 @@ views:
                 name: Motion
               - type: section
                 label: Front left (Reolink)
-              - entity: binary_sensor.front_left_person
+              - entity: binary_sensor.back_yard_person
                 name: Person
-              - entity: binary_sensor.front_left_motion
+              - entity: binary_sensor.back_yard_motion
                 name: Motion
               - type: section
                 label: Hikvision (ONVIF)
-              - entity: binary_sensor.garage_motion_alarm
-                name: Garage motion
-              - entity: binary_sensor.garage_cell_motion_detection
-                name: Garage cell motion
-              - entity: binary_sensor.hik_front_left_motion_alarm
-                name: Hik front left motion
-              - entity: binary_sensor.hik_244_motion_alarm
-                name: Hik 244 motion
+              - entity: binary_sensor.front_right_motion_alarm
+                name: Front right motion
+              - entity: binary_sensor.front_right_cell_motion_detection
+                name: Front right cell motion
+              - entity: binary_sensor.front_left_motion_alarm
+                name: Front left motion
+              - entity: binary_sensor.garage_right_motion_alarm
+                name: Garage right motion
 
       - type: grid
         cards:
@@ -138,14 +146,14 @@ views:
                 name: Doorbell
               - entity: binary_sensor.doorbell_person
                 name: Door person
-              - entity: binary_sensor.front_left_person
-                name: Front left person
-              - entity: binary_sensor.garage_motion_alarm
+              - entity: binary_sensor.back_yard_person
+                name: Back yard person
+              - entity: binary_sensor.front_right_motion_alarm
                 name: Garage
-              - entity: binary_sensor.hik_front_left_motion_alarm
-                name: Hik front left
-              - entity: binary_sensor.hik_244_motion_alarm
-                name: Hik 244
+              - entity: binary_sensor.front_left_motion_alarm
+                name: Front left
+              - entity: binary_sensor.garage_right_motion_alarm
+                name: Garage right
 
   # =================================================================
   - title: Doorbell

@@ -188,7 +188,7 @@ views:
           # Hikvision, despite .242 self-reporting its channel name as
           # "Garage". The device names are misleading - see Admin.
           - type: picture-entity
-            entity: camera.hik_244_mainstream
+            entity: camera.garage_right_mainstream
             camera_view: auto
             show_name: false
             show_state: false
@@ -273,11 +273,11 @@ views:
                 name: Lounge media
               - entity: camera.doorbell_fluent
                 name: Doorbell camera
-              - entity: camera.front_left_fluent
-                name: Front left camera
-              - entity: camera.garage_mainstream
-                name: Garage camera
-              - entity: camera.hik_front_left_mainstream
-                name: Hik front left
-              - entity: camera.hik_244_mainstream
-                name: Hik 244
+              - entity: camera.back_yard_fluent
+                name: Back yard camera
+              - entity: camera.front_right_mainstream
+                name: Front right camera
+              - entity: camera.front_left_mainstream
+                name: Front left
+              - entity: camera.garage_right_mainstream
+                name: Garage right
