@@ -824,44 +824,272 @@ views:
               - entity: input_number.dryer_start_threshold
               - entity: input_number.dryer_stop_threshold
               - entity: input_number.dryer_stop_minutes
-
+  # =================================================================
+  # Inverter - everything the Sofar G3 reports, 68 entities.
+  #
+  # This is the diagnostic tab: complete rather than curated, so when something
+  # is wrong there is no need to go hunting in Developer Tools. The Now/Today
+  # tabs stay deliberately sparse for daily use.
   - title: Inverter
     path: inverter
     type: sections
     max_columns: 3
     icon: mdi:cog-outline
+    badges:
+      - type: entity
+        entity: sensor.inverter_device_state
+        name: State
+      - type: entity
+        entity: sensor.inverter_device_fault
+        name: Fault
+      - type: entity
+        entity: binary_sensor.inverter_connection
+        name: Link
+      - type: entity
+        entity: sensor.inverter_power
+        name: Inverter power
 
     sections:
+      # ---------------------------------------------------------------
       - type: grid
         cards:
           - type: heading
-            heading: Health
+            heading: Status
             heading_style: title
             icon: mdi:heart-pulse
           - type: entities
             show_header_toggle: false
             entities:
               - entity: binary_sensor.inverter_connection
-                name: Link
+                name: Modbus link
               - entity: sensor.inverter_device_state
-                name: State
+                name: Device state
               - entity: sensor.inverter_device_fault
-                name: Fault
-              - entity: sensor.inverter_temperature
-                name: Temperature
-              - entity: sensor.inverter_radiator_temperature
-                name: Radiator
-              - entity: sensor.inverter_module_temperature
-                name: Module
+                name: Fault code
+              - entity: select.inverter_storage_control_mode
+                name: Storage control mode
+              - entity: sensor.inverter_update_interval
+                name: Poll interval
+              - entity: sensor.inverter_frequency
+                name: Grid frequency
               - entity: sensor.inverter_insulation_resistance
-                name: Insulation
+                name: Insulation resistance
 
+      # ---------------------------------------------------------------
       - type: grid
         cards:
           - type: heading
-            heading: AC side
+            heading: Temperatures
+            heading_style: title
+            icon: mdi:thermometer
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_module_temperature
+                name: Module
+              - entity: sensor.inverter_radiator_temperature
+                name: Radiator
+              - entity: sensor.inverter_room_temperature
+                name: Ambient
+              - entity: sensor.inverter_battery_temperature
+                name: Battery
+              - entity: sensor.inverter_temperature
+                name: Inverter (reads 0 - unpopulated on this model)
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Losses and efficiency
+            heading_style: title
+            icon: mdi:chart-donut
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_power_losses
+                name: Losses now
+              - entity: sensor.inverter_today_losses
+                name: Losses today
+              - entity: sensor.inverter_total_losses
+                name: Losses all time
+              - entity: sensor.inverter_power
+                name: Inverter output
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: PV strings
+            heading_style: title
+            icon: mdi:solar-panel
+          - type: markdown
+            content: >-
+              These registers are **not trustworthy on this inverter**. PV1/PV2 read
+              around 3 V and 0 W even in full sun, and a sweep of the whole
+              0x0000-0x0800 Modbus map found no alternative live PV block - so it is
+              the inverter, not the register map. **Solar PV power** below is derived
+              from the energy balance (load + grid + battery) and agrees with the
+              production counter to within 1%. See `packages/solar.yaml`.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.solar_pv_power
+                name: Solar PV power (derived - trust this)
+              - type: section
+                label: Raw registers - known bad, kept for diagnosis
+              - entity: sensor.inverter_pv_power
+                name: PV power (raw)
+              - entity: sensor.inverter_pv1_voltage
+                name: PV1 voltage
+              - entity: sensor.inverter_pv1_current
+                name: PV1 current
+              - entity: sensor.inverter_pv1_power
+                name: PV1 power
+              - entity: sensor.inverter_pv2_voltage
+                name: PV2 voltage
+              - entity: sensor.inverter_pv2_current
+                name: PV2 current
+              - entity: sensor.inverter_pv2_power
+                name: PV2 power
+              - type: section
+                label: Production
+              - entity: sensor.inverter_today_production
+                name: Today
+              - entity: sensor.inverter_total_production
+                name: All time
+
+      # ---------------------------------------------------------------
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Battery
+            heading_style: title
+            icon: mdi:battery-high
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_battery
+                name: State of charge
+              - entity: sensor.inverter_battery_power
+                name: Power (+ charge / - discharge)
+              - entity: sensor.inverter_battery_current
+                name: Current
+              - entity: sensor.inverter_battery_voltage
+                name: Voltage
+              - entity: sensor.inverter_battery_temperature
+                name: Temperature
+              - type: section
+                label: Health - ESI, 4 x ESI BTS 5K, 20.0 kWh
+              - entity: sensor.inverter_battery_soh
+                name: State of health
+              - entity: sensor.inverter_battery_cycles
+                name: Cycles
+              - entity: sensor.battery_total_capacity
+                name: Total capacity
+              - entity: sensor.battery_usable_capacity
+                name: Usable capacity
+              - entity: sensor.battery_remaining_energy
+                name: Stored now
+              - type: section
+                label: Limits
+              - entity: sensor.inverter_battery_dod
+                name: Depth of discharge
+              - entity: sensor.inverter_battery_eod
+                name: End of discharge
+              - entity: sensor.inverter_battery_eps_buffer
+                name: EPS reserve
+              - entity: sensor.inverter_passive_maximum_battery_power
+                name: Max charge power
+              - entity: sensor.inverter_passive_minimum_battery_power
+                name: Max discharge power
+              - type: section
+                label: Throughput
+              - entity: sensor.inverter_today_battery_charge
+                name: Charged today
+              - entity: sensor.inverter_today_battery_discharge
+                name: Discharged today
+              - entity: sensor.inverter_total_battery_charge
+                name: Charged all time
+              - entity: sensor.inverter_total_battery_discharge
+                name: Discharged all time
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Grid
+            heading_style: title
+            icon: mdi:transmission-tower
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_grid_power
+                name: Power (+ export / - import)
+              - entity: sensor.inverter_passive_grid_power
+                name: Passive grid power
+              - type: section
+                label: Energy
+              - entity: sensor.inverter_today_energy_import
+                name: Imported today
+              - entity: sensor.inverter_today_energy_export
+                name: Exported today
+              - entity: sensor.inverter_total_energy_import
+                name: Imported all time
+              - entity: sensor.inverter_total_energy_export
+                name: Exported all time
+              - type: section
+                label: HA cost tracking - starts from when the tariff was set
+              - entity: sensor.inverter_today_energy_import_cost
+                name: Import cost today (HA)
+              - entity: sensor.inverter_total_energy_import_cost
+                name: Import cost all time (HA)
+              - entity: sensor.inverter_total_energy_export_compensation
+                name: Export compensation (FIT is 0)
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Load and UPS output
+            heading_style: title
+            icon: mdi:home-lightning-bolt
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.inverter_load_power
+                name: House load
+              - entity: sensor.circuits_total_power
+                name: Sum of MSB circuits (cross-check)
+              - entity: sensor.inverter_today_load_consumption
+                name: Used today
+              - entity: sensor.inverter_total_load_consumption
+                name: Used all time
+              - type: section
+                label: EPS / UPS output
+              - entity: sensor.inverter_load_ups_power
+                name: UPS power
+              - entity: sensor.inverter_load_ups_frequency
+                name: UPS frequency
+              - entity: sensor.inverter_load_ups_l1_voltage
+                name: UPS L1 voltage
+              - entity: sensor.inverter_load_ups_l1_current
+                name: UPS L1 current
+              - entity: sensor.inverter_load_ups_l1_power
+                name: UPS L1 power
+
+      # ---------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: AC phases
             heading_style: title
             icon: mdi:sine-wave
+          - type: markdown
+            content: >-
+              Single phase, so L2 and L3 read zero. They are shown because a
+              non-zero value here would mean the inverter has been reconfigured.
           - type: entities
             show_header_toggle: false
             entities:
@@ -869,58 +1097,42 @@ views:
                 name: L1 voltage
               - entity: sensor.inverter_l1_current
                 name: L1 current
-              - entity: sensor.inverter_frequency
-                name: Frequency
-              - entity: sensor.inverter_load_ups_power
-                name: UPS output
+              - entity: sensor.inverter_l2_voltage
+                name: L2 voltage
+              - entity: sensor.inverter_l2_current
+                name: L2 current
+              - entity: sensor.inverter_l3_voltage
+                name: L3 voltage
+              - entity: sensor.inverter_l3_current
+                name: L3 current
 
-      - type: grid
-        cards:
-          - type: heading
-            heading: Solar
-            heading_style: title
-            icon: mdi:solar-panel
-          - type: markdown
-            content: >-
-              The inverter does not report its PV registers - PV1/PV2 read ~1.7 V
-              and 0 W even in full sun. **Solar PV power** below is derived from
-              the energy balance (load + grid + battery), which is accurate to
-              within 1% of the production counter. Per-string breakdown is not
-              available from this inverter.
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - entity: sensor.solar_pv_power
-                name: Solar PV power (derived)
-              - entity: sensor.inverter_today_production
-                name: Produced today
-              - entity: sensor.inverter_total_production
-                name: Produced all time
-              - entity: sensor.inverter_device_state
-                name: Inverter state
-              - entity: sensor.inverter_device_fault
-                name: Inverter fault
-
+      # ---------------------------------------------------------------
       - type: grid
         column_span: 3
         cards:
           - type: heading
             heading: Controls - change these deliberately
             heading_style: subtitle
-            icon: mdi:tune
-          # Export Priority must never be selected while the feed-in tariff is
-          # 0. Export Surplus Limitation = Enabled with a 0 W limit forces all
-          # generation into the battery and house loads.
+            icon: mdi:tune-variant
+          - type: markdown
+            content: >-
+              Feed-in tariff is **0**, so Export Priority must never be selected -
+              it would push solar to the grid for nothing instead of charging the
+              battery. Self Use is correct.
           - type: entities
             show_header_toggle: false
             entities:
               - entity: select.inverter_storage_control_mode
                 name: Storage control mode
               - entity: select.inverter_export_surplus_limitation
-                name: Export limitation
+                name: Export surplus limitation
               - entity: number.inverter_export_surplus_power
-                name: Export limit (W)
-              - entity: sensor.inverter_total_production
-                name: Lifetime production
-              - entity: sensor.inverter_total_energy_export
-                name: Lifetime export
+                name: Export surplus limit
+              - type: section
+                label: Unavailable on this stick - listed so their absence is not a mystery
+              - entity: button.inverter_restart
+                name: Restart inverter
+              - entity: select.inverter_cloud
+                name: Cloud mode
+              - entity: switch.inverter_access_point
+                name: Access point
