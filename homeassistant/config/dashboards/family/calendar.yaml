@@ -9,9 +9,9 @@
 # legendToggle makes the legend the kid-facing control: tap pink, see only your
 # own events. It is the one interaction a 4-year-old can discover unaided.
 #
-# type: panel rather than sections - this is a wall display, and panel gives
-# genuine full-bleed width. sections caps column width, wasting a third of the
-# screen on a tablet mounted across a kitchen.
+# type: panel gives full-bleed width, which a wall display wants and `sections`
+# will not do - but a panel view renders EXACTLY ONE card, so everything below
+# lives inside the single vertical-stack, the pop-up included.
 title: Calendar
 path: calendar
 icon: mdi:calendar-month
@@ -52,11 +52,10 @@ cards:
         startingDay: today
         locale: en-AU
         timeFormat: h:mma
-        # dayFormat is a LUXON format string, and Luxon parses every unquoted
-        # letter as a token - so raw HTML here is read as format codes and
-        # renders as garbage ("0pam35"). Literal text must sit inside Luxon
-        # single quotes, which forces double quotes on the HTML attributes.
-        # Renders as: small tracked weekday above a large day numeral.
+        # dayFormat is a LUXON format string. Luxon parses every unquoted letter
+        # as a token, so raw HTML here renders as garbage ("0pam35"). Literal
+        # text must sit inside Luxon single quotes, which forces double quotes
+        # on the HTML attributes. Renders a tracked weekday above a big numeral.
         dayFormat: "'<span class=\"fam-dow\">'cccc'</span><span class=\"fam-num\">'d'</span>'"
         showLegend: true
         legendToggle: true
@@ -131,48 +130,48 @@ cards:
             .legend { gap: 14px !important; padding-top: 10px !important; }
             .legend > div { font-size: 1rem !important; font-weight: 700 !important; }
 
-      - !include _navbar.yaml
+      # Composer. Bubble Card v3.2.0+ standalone format: content lives in this
+      # card's own cards: list. "Standalone" means it no longer NEEDS a
+      # vertical-stack wrapper - it can still sit in one, which a panel view
+      # requires.
+      - type: custom:bubble-card
+        card_type: pop-up
+        name: New event
+        icon: mdi:calendar-plus
+        hash: "#add-event"
+        cards:
+          - type: entities
+            entities:
+              - entity: input_select.family_event_person
+                name: Who is it for
+              - entity: input_text.family_event_title
+                name: What is it
+              - entity: input_datetime.family_event_start
+                name: When
+              - entity: input_select.family_event_length
+                name: How long
+            card_mod:
+              style: |
+                ha-card { box-shadow: none; border: none; }
+                .card-content { font-size: 1.1rem; font-weight: 600; }
+          - type: custom:button-card
+            name: Save to calendar
+            icon: mdi:check-bold
+            tap_action:
+              action: call-service
+              service: script.family_add_event
+            styles:
+              card:
+                - height: 68px
+                - border-radius: 18px
+                - background: var(--family-aria)
+                - box-shadow: none
+              name:
+                - font-size: 1.2rem
+                - font-weight: 800
+                - color: "#FFFFFF"
+              icon:
+                - width: 30px
+                - color: "#FFFFFF"
 
-  # Composer. Bubble Card v3.2.0+ standalone pop-up: content lives in this
-  # card's own `cards:` list, NOT as siblings in a vertical-stack. Standalone
-  # pop-ups render faster and no longer need a wrapper.
-  - type: custom:bubble-card
-    card_type: pop-up
-    name: New event
-    icon: mdi:calendar-plus
-    hash: "#add-event"
-    cards:
-      - type: entities
-        entities:
-          - entity: input_select.family_event_person
-            name: Who is it for
-          - entity: input_text.family_event_title
-            name: What is it
-          - entity: input_datetime.family_event_start
-            name: When
-          - entity: input_select.family_event_length
-            name: How long
-        card_mod:
-          style: |
-            ha-card { box-shadow: none; border: none; }
-            /* Wall-mounted: rows need to be thumb-sized, not mouse-sized. */
-            .card-content { font-size: 1.1rem; font-weight: 600; }
-      - type: custom:button-card
-        name: Save to calendar
-        icon: mdi:check-bold
-        tap_action:
-          action: call-service
-          service: script.family_add_event
-        styles:
-          card:
-            - height: 68px
-            - border-radius: 18px
-            - background: var(--family-aria)
-            - box-shadow: none
-          name:
-            - font-size: 1.2rem
-            - font-weight: 800
-            - color: "#FFFFFF"
-          icon:
-            - width: 30px
-            - color: "#FFFFFF"
+      - !include _navbar.yaml
