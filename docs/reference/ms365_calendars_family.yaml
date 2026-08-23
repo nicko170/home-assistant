@@ -1,0 +1,92 @@
+# REFERENCE COPY - not deployed, not read by Home Assistant.
+#
+# The live file is /config/ms365_storage/ms365_calendars_family.yaml on the mac
+# mini. It is deliberately gitignored: the MS365 integration REWRITES it (it
+# regenerates entries when calendars change), so tracking it would leave the
+# deploy tree permanently dirty and every `git merge --ff-only` in deploy.sh
+# would fail - the same class of breakage the .cache entry in .gitignore exists
+# to prevent.
+#
+# This copy exists so the per-person filter design is recoverable and reviewable.
+# If the live file is lost, recreate it from here and reload the integration.
+#
+# The filters implement the spec's per-person colouring: one shared Outlook
+# calendar, subject prefixes ("Aria: Swimming"), and one HA calendar entity per
+# person via `search`, plus a `shared` entity via `exclude` of all four prefixes.
+# Verified 2026-08-23: each event routes to exactly one person entity.
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAAAAAF3SAAA=
+  entities:
+  - device_id: Calendar
+    end_offset: 24
+    name: Calendar
+    start_offset: 0
+    track: false
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAAAAAF3TAAA=
+  entities:
+  - device_id: United Kingdom holidays
+    end_offset: 24
+    name: United Kingdom holidays
+    start_offset: 0
+    track: false
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAAAAAF3WAAA=
+  entities:
+  - device_id: Birthdays
+    end_offset: 24
+    name: Birthdays
+    start_offset: 0
+    track: false
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAAAAAF3XAAA=
+  entities:
+  - device_id: Birthdays
+    end_offset: 24
+    name: Birthdays
+    start_offset: 0
+    track: false
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAAAAAF3YAAA=
+  entities:
+  - device_id: Holidays in Australia
+    end_offset: 24
+    name: Holidays in Australia
+    start_offset: 0
+    track: false
+- cal_id: AAMkADg5NmZmM2QwLTQ0ZGQtNDA1Zi1iZmRkLWNkMWFjZmI1NTVlNABGAAAAAAD29fpetT5CT6wPo-7_C-fEBwB-ZpLKoid3RpHGgeoSzDJmAAAAAAEGAAB-ZpLKoid3RpHGgeoSzDJmAASoniKqAAA=
+  entities:
+  - device_id: all
+    name: Family all
+    track: true
+    start_offset: 0
+    end_offset: 168
+  - device_id: nick
+    name: Nick
+    track: true
+    start_offset: 0
+    end_offset: 168
+    search: 'Nick:'
+  - device_id: elle
+    name: Elle
+    track: true
+    start_offset: 0
+    end_offset: 168
+    search: 'Elle:'
+  - device_id: aria
+    name: Aria
+    track: true
+    start_offset: 0
+    end_offset: 168
+    search: 'Aria:'
+  - device_id: eden
+    name: Eden
+    track: true
+    start_offset: 0
+    end_offset: 168
+    search: 'Eden:'
+  - device_id: shared
+    name: Family shared
+    track: true
+    start_offset: 0
+    end_offset: 168
+    exclude:
+    - 'Nick:'
+    - 'Elle:'
+    - 'Aria:'
+    - 'Eden:'
