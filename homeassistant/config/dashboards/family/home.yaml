@@ -1,0 +1,20 @@
+# Home - the idle/default view. Built last, in Phase 7, because it summarises
+# every other view.
+title: Home
+path: home
+icon: mdi:home-heart
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Home
+        heading_style: title
+        icon: mdi:home-heart
+      - type: markdown
+        content: >-
+          Phase 7 fills this in: date and weather, today's events, tonight's dinner, Aria's remaining chores, and any running timers.
+  - type: grid
+    cards:
+      - !include _navbar.yaml

@@ -1,0 +1,22 @@
+# Family - the kitchen wall tablet.
+#
+# This file is the shell only. Each view lives in its own file under
+# dashboards/family/ so no single file grows unwieldy, and every view ends with
+# the same !include'd navbar - one definition, five uses.
+#
+# !include resolves relative to the file containing it, so the paths below are
+# relative to dashboards/, and the _navbar.yaml includes inside each view file
+# are relative to dashboards/family/.
+#
+# kiosk-mode is deliberately NOT configured here. The tablet loads
+#   http://192.168.15.4:8123/home-family/home?kiosk
+# and kiosk-mode strips the header and sidebar from that URL parameter alone.
+# Configuring it in this file instead would strip the chrome for laptops and
+# phones too, on a dashboard the adults also use.
+
+views:
+  - !include family/home.yaml
+  - !include family/calendar.yaml
+  - !include family/chores.yaml
+  - !include family/kitchen.yaml
+  - !include family/more.yaml

@@ -1,0 +1,20 @@
+# More - lights, climate, map, cameras, garage. The last three are PIN-gated.
+# Filled in Phase 6.
+title: More
+path: more
+icon: mdi:dots-horizontal
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: More
+        heading_style: title
+        icon: mdi:dots-horizontal
+      - type: markdown
+        content: >-
+          Phase 6 fills this in: lights and climate open to everyone, then the PIN keypad gating the family map, cameras and the garage door.
+  - type: grid
+    cards:
+      - !include _navbar.yaml

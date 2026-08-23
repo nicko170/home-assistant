@@ -1,0 +1,19 @@
+# Calendar - week planner and the add-event composer. Filled in Phase 3.
+title: Calendar
+path: calendar
+icon: mdi:calendar-month
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Calendar
+        heading_style: title
+        icon: mdi:calendar-month
+      - type: markdown
+        content: >-
+          Phase 3 fills this in: the week planner across the six filtered calendar entities, plus the add-event composer that prepends the person prefix automatically.
+  - type: grid
+    cards:
+      - !include _navbar.yaml

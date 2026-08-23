@@ -60,4 +60,37 @@ if echo "$OUT" | grep -q "Invalid config for"; then
   exit 1
 fi
 
+# ---------------------------------------------------------------------------
+# Stage 2: dashboards.
+#
+# check_config does NOT parse YAML-mode dashboards - verified 2026-08-23 by
+# pointing family.yaml at a nonexistent !include and watching it exit 0 in
+# silence. HA loads those files lazily, when a browser first requests them, so
+# a broken include surfaces as a blank dashboard at the wall rather than as a
+# failed deploy. Parse them explicitly with HA's own loader, which resolves
+# !include exactly as HA does at request time.
+# ---------------------------------------------------------------------------
+echo "Validating dashboards"
+set +e
+DOUT="$(docker run --rm -v "$WORK/config:/config" "$IMAGE" python -c '
+import glob, sys
+from homeassistant.util.yaml import load_yaml
+ok = True
+for f in ["/config/ui-lovelace.yaml"] + sorted(glob.glob("/config/dashboards/*.yaml")):
+    try:
+        load_yaml(f)
+        print("  ok   " + f)
+    except Exception as e:
+        ok = False
+        print("  FAIL " + f + ": " + str(e))
+sys.exit(0 if ok else 1)
+' 2>&1)"
+DRC=$?
+set -e
+echo "$DOUT"
+if [ "$DRC" -ne 0 ]; then
+  echo >&2 "FAIL: a dashboard file does not parse - it would render blank on the wall"
+  exit 1
+fi
+
 echo "OK: config is valid"

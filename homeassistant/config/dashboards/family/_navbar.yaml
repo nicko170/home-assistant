@@ -1,0 +1,30 @@
+# The bottom tab bar, included by every view in this dashboard.
+#
+# navbar-card renders fixed-position, so it floats above the layout regardless
+# of which grid section declares it - its placement in a view is bookkeeping,
+# not layout.
+#
+# Five tabs is deliberate: bottom bars degrade badly past six, and every target
+# has to survive a four-year-old's aim.
+type: custom:navbar-card
+desktop:
+  position: bottom
+  show_labels: true
+mobile:
+  show_labels: true
+routes:
+  - url: /home-family/home
+    icon: mdi:home-heart
+    label: Home
+  - url: /home-family/calendar
+    icon: mdi:calendar-month
+    label: Calendar
+  - url: /home-family/chores
+    icon: mdi:star-circle
+    label: Chores
+  - url: /home-family/kitchen
+    icon: mdi:silverware-fork-knife
+    label: Kitchen
+  - url: /home-family/more
+    icon: mdi:dots-horizontal
+    label: More

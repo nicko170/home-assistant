@@ -1,0 +1,19 @@
+# Chores - Aria's picture tiles and star balance. Filled in Phase 4.
+title: Chores
+path: chores
+icon: mdi:star-circle
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Chores
+        heading_style: title
+        icon: mdi:star-circle
+      - type: markdown
+        content: >-
+          Phase 4 fills this in: Aria's picture chore tiles, her star balance, and progress toward the next reward. Eden has no chores.
+  - type: grid
+    cards:
+      - !include _navbar.yaml

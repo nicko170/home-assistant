@@ -1,0 +1,19 @@
+# Kitchen - weekly dinners, tonight's recipe, and timers. Filled in Phase 5.
+title: Kitchen
+path: kitchen
+icon: mdi:silverware-fork-knife
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Kitchen
+        heading_style: title
+        icon: mdi:silverware-fork-knife
+      - type: markdown
+        content: >-
+          Phase 5 fills this in: the week's dinners from Mealie with tonight's enlarged, the full recipe on tap, and the kitchen timers.
+  - type: grid
+    cards:
+      - !include _navbar.yaml

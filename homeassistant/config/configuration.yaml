@@ -83,6 +83,13 @@ lovelace:
       icon: mdi:cctv
       show_in_sidebar: true
       require_admin: false
+    home-family:
+      mode: yaml
+      filename: dashboards/family.yaml
+      title: Family
+      icon: mdi:account-group
+      show_in_sidebar: true
+      require_admin: false
     home-admin:
       mode: yaml
       filename: dashboards/admin.yaml

@@ -1,0 +1,37 @@
+# Family kitchen dashboard theme.
+#
+# Light, not dark. A kitchen in daylight makes a dark dashboard unreadable, and
+# Skylight's own identity is bright. Night legibility is handled by dimming the
+# tablet backlight in packages/family_kiosk.yaml, not by swapping themes - one
+# theme means one set of behaviours to reason about.
+#
+# Colours only. HA has no reliable global font-size variable, so the "readable
+# from 3 m" sizing is done per-card with card-mod in Phases 3-7 rather than
+# faked here with paper-font overrides that modern HA cards ignore.
+family:
+  # --- per-person accents ---------------------------------------------------
+  # HA turns every theme key into a CSS custom property with a "--" prefix, so
+  # these are usable from card-mod as var(--family-aria) and friends.
+  family-nick: "#2E86DE"
+  family-elle: "#A55EEA"
+  family-aria: "#FF6B9D"
+  family-eden: "#26C6A0"
+  family-shared: "#F7B731"
+
+  # --- base palette ---------------------------------------------------------
+  primary-color: "#2E86DE"
+  accent-color: "#F7B731"
+  primary-background-color: "#F4F6FA"
+  secondary-background-color: "#FFFFFF"
+  card-background-color: "#FFFFFF"
+  primary-text-color: "#1B2430"
+  secondary-text-color: "#5A6779"
+  divider-color: "#E3E8EF"
+  state-icon-color: "#2E86DE"
+
+  # --- card shape -----------------------------------------------------------
+  # Rounder and softer than HA's default: this sits on a wall in a kitchen, not
+  # in a control panel.
+  ha-card-border-radius: "22px"
+  ha-card-border-width: "0"
+  ha-card-box-shadow: "0 2px 10px rgba(27, 36, 48, 0.08)"

@@ -168,6 +168,17 @@ Expected: no output (file restored byte-for-byte).
 Run: `./tools/check-config.sh`
 Expected: `OK: config is valid`.
 
+- [ ] **Step 5b: Prove the dashboard stage catches a broken `!include`**
+
+```bash
+cp homeassistant/config/dashboards/energy.yaml /tmp/energy.bak
+sed -i '' '1s|^|!include nonexistent.yaml\n|' homeassistant/config/dashboards/energy.yaml
+./tools/check-config.sh; echo "exit=$?"
+cp /tmp/energy.bak homeassistant/config/dashboards/energy.yaml
+```
+
+Expected: `FAIL: a dashboard file does not parse - it would render blank on the wall`, `exit=1`.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -656,7 +667,9 @@ The key must contain a hyphen — HA rejects a single-word `url_path`.
 - [ ] **Step 5: Validate**
 
 Run: `./tools/check-config.sh`
-Expected: `OK: config is valid`. If an `!include` path is wrong this fails here with a parse error naming the missing file.
+Expected: `OK: config is valid`, including an `ok` line for `/config/dashboards/family.yaml`.
+
+The harness's second stage exists precisely for this: `check_config` alone does **not** parse YAML-mode dashboards (verified 2026-08-23 — a `!include` pointing at a nonexistent file exits 0 in silence, because HA loads those files lazily when a browser first requests them). A broken include would otherwise surface as a blank dashboard on the kitchen wall rather than as a failed deploy.
 
 - [ ] **Step 6: Commit and push**
 
