@@ -1,0 +1,128 @@
+# PIN gate for the kitchen tablet.
+#
+# This is a CHILD-PROOF LATCH, not a security boundary. Anyone who can reach
+# the tablet could reach the garage by other means; this is sized to stop a
+# 4-year-old pressing the garage button, and the design claims nothing more.
+#
+# Gated cards are rendered CONDITIONALLY, so while locked they are absent from
+# the DOM rather than merely hidden by CSS - hiding them would leave a working
+# garage button one inspector-click away.
+#
+# Lives in its own package rather than family_kiosk.yaml (where the spec put
+# it) because family_kiosk.yaml references Fully Kiosk entities that do not
+# exist until the tablet arrives. Merging them would mean deploying automations
+# that error on every trigger.
+
+input_boolean:
+  family_unlocked:
+    name: Family controls unlocked
+    icon: mdi:lock-open-variant
+
+input_text:
+  family_pin_entry:
+    name: PIN entry
+    icon: mdi:dialpad
+    max: 4
+    mode: password
+
+script:
+  # One script for every digit. Appends, then checks on the 4th - an explicit
+  # "enter" key is one more thing to explain to someone holding a saucepan.
+  family_pin_digit:
+    alias: PIN keypad digit
+    icon: mdi:dialpad
+    mode: single
+    fields:
+      digit:
+        description: The digit pressed
+        example: "7"
+        required: true
+        selector: {text: null}
+    sequence:
+      - variables:
+          expected: !secret family_pin
+          current: >-
+            {%- set c = states('input_text.family_pin_entry') -%}
+            {{ '' if c in ['unknown', 'unavailable', 'None'] else c }}
+      - variables:
+          entered: "{{ (current ~ digit)[:4] }}"
+
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.family_pin_entry
+        data:
+          value: "{{ entered }}"
+
+      - if:
+          - condition: template
+            value_template: "{{ entered | length >= 4 }}"
+        then:
+          - if:
+              - condition: template
+                value_template: "{{ entered == expected }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.family_unlocked
+            else:
+              # Say it is wrong rather than silently clearing - a blank box
+              # reads as a broken keypad.
+              - action: persistent_notification.create
+                data:
+                  title: Wrong PIN
+                  message: That PIN was not recognised. Try again.
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.family_pin_entry
+            data:
+              value: ""
+
+  family_pin_clear:
+    alias: PIN keypad clear
+    icon: mdi:backspace-outline
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.family_pin_entry
+        data:
+          value: ""
+
+  family_lock_now:
+    alias: Lock family controls
+    icon: mdi:lock
+    mode: single
+    sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.family_unlocked
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.family_pin_entry
+        data:
+          value: ""
+
+automation:
+  # Relock on a timeout. The spec also wanted a relock on navigating away from
+  # the More tab; that needs the tablet's current-page sensor from Fully Kiosk,
+  # so it lands with the hardware. Until then the timeout is the only guard.
+  - id: family_pin_auto_relock
+    alias: "PIN: relock after 5 minutes"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.family_unlocked
+        to: "on"
+        for: "00:05:00"
+    actions:
+      - action: script.family_lock_now
+
+  # Never leave the tablet unlocked across a restart.
+  - id: family_pin_lock_on_start
+    alias: "PIN: lock on Home Assistant start"
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: script.family_lock_now

@@ -1,20 +1,207 @@
-# Home - the idle/default view. Built last, in Phase 7, because it summarises
-# every other view.
+# Home - the idle screen.
+#
+# Built last because it summarises every other view. This is what the kitchen
+# looks at 95% of the time, usually in passing and from across the room, so it
+# answers exactly four questions and refuses to answer a fifth:
+#
+#   what day is it  /  what is the weather  /  what is on today  /  what is for dinner
+#
+# Aria's outstanding chores ride along because "have you done your teeth" is a
+# question asked daily. Everything else lives one tab away.
 title: Home
 path: home
 icon: mdi:home-heart
-type: sections
-max_columns: 2
-sections:
-  - type: grid
+type: panel
+cards:
+  - type: vertical-stack
     cards:
-      - type: heading
-        heading: Home
-        heading_style: title
-        icon: mdi:home-heart
+      # Date. The single largest element - readable from the doorway.
       - type: markdown
         content: >-
-          Phase 7 fills this in: date and weather, today's events, tonight's dinner, Aria's remaining chores, and any running timers.
-  - type: grid
-    cards:
+          <div class="fam-hero">
+            <div class="fam-dow">{{ now().strftime('%A') }}</div>
+            <div class="fam-date">{{ now().strftime('%-d %B') }}</div>
+          </div>
+        card_mod:
+          style: |
+            ha-card { box-shadow: none; border: none; background: transparent; }
+            .fam-hero { padding: 4px 6px 0 6px; }
+            .fam-dow {
+              font-size: 1rem; font-weight: 800; letter-spacing: 0.22em;
+              text-transform: uppercase; color: var(--secondary-text-color);
+            }
+            .fam-date {
+              font-size: 3.4rem; font-weight: 800; line-height: 1.05;
+              color: var(--primary-text-color);
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: weather-forecast
+            entity: weather.forecast_home
+            forecast_type: daily
+            show_current: true
+            show_forecast: true
+
+          # Tonight's dinner, read from the helper the Kitchen view fills, so
+          # this card costs one state lookup rather than its own API call.
+          - type: custom:button-card
+            entity: input_text.family_dinner_tonight
+            name: Dinner tonight
+            icon: mdi:silverware-variant
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /home-family/kitchen
+            styles:
+              card:
+                - height: 100%
+                - min-height: 150px
+                - border-radius: 22px
+                - background: var(--family-shared)
+                - box-shadow: none
+              grid:
+                - grid-template-areas: '"i" "n" "s"'
+                - grid-template-columns: 1fr
+                - justify-items: start
+                - padding: 18px 22px
+              icon: [width: 44px, color: "#1B2430"]
+              name:
+                - font-size: 0.82rem
+                - font-weight: 700
+                - letter-spacing: 0.14em
+                - text-transform: uppercase
+                - color: rgba(27,36,48,0.7)
+                - padding-top: 8px
+              state:
+                - font-size: 1.7rem
+                - font-weight: 800
+                - color: "#1B2430"
+                - text-align: start
+
+      # Today only. The week lives on the Calendar tab; repeating it here would
+      # make this screen a worse version of that one.
+      - type: custom:week-planner-card
+        title: Today
+        days: 1
+        startingDay: today
+        locale: en-AU
+        timeFormat: h:mma
+        showLegend: false
+        compact: true
+        eventBackground: transparent
+        hideDaysWithoutEvents: false
+        dayFormat: "'<span class=\"fam-today\">'cccc'</span>'"
+        calendars:
+          - entity: calendar.family_shared
+            name: Everyone
+            color: "#F7B731"
+            icon: mdi:home-heart
+          - entity: calendar.family_nick
+            name: Nick
+            color: "#2E86DE"
+            filterText: "^Nick:\\s*"
+          - entity: calendar.family_elle
+            name: Elle
+            color: "#A55EEA"
+            filterText: "^Elle:\\s*"
+          - entity: calendar.family_aria
+            name: Aria
+            color: "#FF6B9D"
+            filterText: "^Aria:\\s*"
+          - entity: calendar.family_eden
+            name: Eden
+            color: "#26C6A0"
+            filterText: "^Eden:\\s*"
+        card_mod:
+          style: |
+            ha-card { border: none; box-shadow: none; background: transparent; }
+            .fam-today {
+              font-size: 0.82rem; font-weight: 700; letter-spacing: 0.16em;
+              text-transform: uppercase; color: var(--secondary-text-color);
+            }
+            .event { border-radius: 12px !important; font-weight: 600 !important; font-size: 1.05rem !important; }
+
+      # Aria's outstanding chores, as a count rather than a list - the list is
+      # one tap away and a count is what you read in passing.
+      - type: custom:button-card
+        entity: sensor.aria_choreops_stars
+        name: Aria's chores
+        icon: mdi:star-circle
+        show_state: false
+        show_label: true
+        label: >-
+          [[[
+            const ids = ['get_dressed','brush_teeth','tidy_toys','shoes_away','set_the_table','teeth_at_night'];
+            let left = 0;
+            for (const id of ids) {
+              const e = states['sensor.aria_choreops_chore_status_' + id];
+              if (e && e.state !== 'completed') left++;
+            }
+            const stars = states['sensor.aria_choreops_stars'];
+            const s = stars ? Math.round(parseFloat(stars.state)) : 0;
+            if (left === 0) return 'All done - ' + s + ' stars';
+            return left + (left === 1 ? ' chore left' : ' chores left') + ' - ' + s + ' stars';
+          ]]]
+        tap_action:
+          action: navigate
+          navigation_path: /home-family/chores
+        styles:
+          card:
+            - height: 104px
+            - border-radius: 22px
+            - background: var(--family-aria)
+            - box-shadow: none
+          grid:
+            - grid-template-areas: '"i n" "i l"'
+            - grid-template-columns: 96px auto
+            - justify-items: start
+            - padding: 0 22px
+          icon: [width: 56px, color: "#FFFFFF"]
+          name:
+            - font-size: 0.82rem
+            - font-weight: 700
+            - letter-spacing: 0.14em
+            - text-transform: uppercase
+            - color: rgba(255,255,255,0.85)
+          label:
+            - font-size: 1.5rem
+            - font-weight: 800
+            - color: "#FFFFFF"
+
+      # Running timers only. Conditional so the idle screen stays quiet when
+      # nothing is cooking - a permanent "no timers" row is noise.
+      - type: conditional
+        conditions:
+          - condition: or
+            conditions:
+              - condition: state
+                entity: timer.kitchen_timer_1
+                state: active
+              - condition: state
+                entity: timer.kitchen_timer_2
+                state: active
+              - condition: state
+                entity: timer.kitchen_timer_3
+                state: active
+              - condition: state
+                entity: timer.kitchen_timer_4
+                state: active
+        card:
+          type: entities
+          title: Cooking
+          entities:
+            - timer.kitchen_timer_1
+            - timer.kitchen_timer_2
+            - timer.kitchen_timer_3
+            - timer.kitchen_timer_4
+          card_mod:
+            style: |
+              ha-card { box-shadow: none; border: none; border-radius: 18px; }
+              /* Idle timers are noise on the idle screen; the card only shows
+                 at all when at least one is running. */
+              #states > div:has(> hui-timer-entity-row [class*="idle"]) { display: none; }
+
       - !include _navbar.yaml
