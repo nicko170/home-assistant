@@ -50,7 +50,14 @@ script:
             {%- set c = states('input_text.family_pin_entry') | string -%}
             {{ '' if c in ['unknown', 'unavailable', 'None'] else c }}
       - variables:
-          entered: "{{ ((current | string) ~ (digit | string))[:4] }}"
+          # NOT (current ~ digit)[:4]. Truncating means a buffer that is
+          # already 4 long re-tests the SAME value on every subsequent press -
+          # so a stale correct PIN left in the field (input_text restores across
+          # restarts) unlocked the gate on the next digit pressed, whatever it
+          # was. A full buffer must start over instead.
+          entered: >-
+            {%- set c = current | string -%}
+            {{ (digit | string) if c | length >= 4 else c ~ (digit | string) }}
 
       - action: input_text.set_value
         target:
