@@ -1000,3 +1000,51 @@ Expected: a push notification titled "Kitchen tablet offline" on Nick's iPhone. 
 - **The PIN gate does not exist yet**, so the More tab must not link to the garage door until Phase 6 lands.
 - **`check_config` cannot catch entity-reference errors.** Every later phase must verify its entities against the live registry, not just validate YAML.
 - **Mealie is not covered by the GitOps deploy.** Its image tag is pinned in `docker-compose.yml`, but upgrading it requires a manual `docker compose up -d mealie` on the mac mini.
+
+---
+
+# Execution record — 2026-08-23
+
+All five views are built and deployed. What remains is hardware-gated only.
+
+## Done
+
+| Phase | Outcome |
+|---|---|
+| 0 — Prerequisites | Entra app registered via Graph (secret expires **2028-08-23**), `Family` calendar created and shared to `elle@pratley.au`, MS365 / ChoreOps / Mealie all `loaded` |
+| 1 — Tablet | **Not started — no hardware yet** |
+| 2 — Shell | `home-family` dashboard, theme, five-tab navbar |
+| 3 — Calendar | Six filtered entities, week planner, add-event composer. Write path verified end to end |
+| 4 — Chores | Six picture tiles, star balance, claim→approve verified |
+| 5 — Kitchen | Mealie week plan, tonight's dinner, four timers with next-free-slot presets |
+| 6 — More | Open controls plus a PIN gate over garage/map/cameras |
+| 7 — Home | Date, weather, today, dinner, chores, live timers |
+
+## Deviations from the plan, and why
+
+- **`type: panel`, not `sections`.** `sections` caps column width; a wall display wants full bleed. A panel renders exactly one card, so each view is a single `vertical-stack`.
+- **PIN lives in `packages/family_pin.yaml`,** not `family_kiosk.yaml`. The kiosk package references Fully Kiosk entities that do not exist yet; merging them would deploy automations that error on every trigger.
+- **MDI icons, not PNG artwork** in `www/family/chores/`. Icons scale crisply and need no assets. Swapping in photographs of Aria's own toys would be more compelling and is a drop-in change.
+- **Mealie has no "today's meal" sensors** despite the spec (and HA's docs) implying otherwise. Verified: the calendar entity exposes only `friendly_name` even with a plan set. Tonight's dinner comes from `calendar.get_events` into `input_text.family_dinner_tonight`, which Home and Kitchen both read.
+- **Timers use the native `entities` card.** A `template-entity-row` would pair label with countdown, but templates only re-render on state change, so the countdown would sit frozen.
+- **ChoreOps' setup wizard hides `section_system_usage`.** Aria was created with `can_be_assigned`, `enable_chore_workflow` and `enable_gamification` all false — no points sensor, no claim buttons, no error. Those flags only appear in the options flow's add/edit-user form. ChoreOps' own `kiosk_mode` is also required, because Aria has no HA account by design.
+
+## Bugs found by testing, not by reading
+
+1. **HA native-types template results.** Bit three times: a datetime came back as `str` (calendar composer), a bool as the string `"False"` (truthy in Jinja), and the PIN buffer as `int` so `| length` never reached 4 and the keypad silently never unlocked. Force `| string` at every boundary.
+2. **Wrong PIN unlocked the gate.** Accumulating with `(current ~ digit)[:4]` meant a full buffer re-tested the same value on every press, so a stale correct PIN — `input_text` restores across restarts — unlocked on the next digit, whatever it was.
+3. **`mode: single` silently drops overlapping calls.** Four keypresses reliably produced three digits. The keypad is `mode: queued`.
+4. **`check_config` does not parse YAML-mode dashboards.** A bad `!include` exits 0 and renders a blank screen. `tools/check-config.sh` parses them with HA's own loader and caught exactly this during the build.
+5. **`dayFormat` is a Luxon string,** not raw HTML. Unquoted letters are format tokens, so embedded markup rendered as garbage.
+
+## Data loss during the build
+
+ChoreOps' user/chore/reward data was wiped while working through its options flow. One user, one chore and one reward were rebuilt from scratch. The exact triggering step was not established. ChoreOps keeps its own recovery snapshots under `.storage/choreops/` — worth knowing they exist.
+
+## Remaining
+
+- **Task 7** — Fully Kiosk onboarding (needs the Galaxy Tab)
+- **Task 8** — `packages/family_kiosk.yaml`: brightness schedule, return-home-when-abandoned, nightly restart, offline watchdog
+- **PIN relock on navigating away from More** needs Fully Kiosk's current-page sensor; the 5-minute timeout is the only guard until then
+- Change the PIN in `secrets.yaml` (`family_pin`)
+- Rename the placeholder ChoreOps reward ("Ice cream", 10 stars)
