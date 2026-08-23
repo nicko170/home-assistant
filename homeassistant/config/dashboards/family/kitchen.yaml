@@ -1,19 +1,187 @@
-# Kitchen - weekly dinners, tonight's recipe, and timers. Filled in Phase 5.
+# Kitchen - what's for dinner, and what's on the stove.
+#
+# The two questions this screen answers, in the order a cook asks them:
+# "what am I making tonight" then "how long left".
+#
+# Timers use HA's native entities card on purpose: it renders a LIVE ticking
+# countdown, which a templated row cannot (templates only re-render on state
+# change, so a template timer row sits frozen). The "what's cooking" labels are
+# carried alongside in a markdown line and in the finished notification, where
+# they matter most - "Pasta is done" beats "Kitchen timer 3 is done".
 title: Kitchen
 path: kitchen
 icon: mdi:silverware-fork-knife
-type: sections
-max_columns: 2
-sections:
-  - type: grid
+type: panel
+cards:
+  - type: vertical-stack
     cards:
-      - type: heading
-        heading: Kitchen
-        heading_style: title
-        icon: mdi:silverware-fork-knife
+      # Tonight. The single biggest thing on the screen, because it is the
+      # question asked most often and from furthest away.
+      - type: custom:button-card
+        entity: input_text.family_dinner_tonight
+        name: Tonight
+        icon: mdi:silverware-variant
+        show_state: true
+        show_name: true
+        tap_action:
+          action: url
+          url_path: http://192.168.15.4:9925
+        styles:
+          card:
+            - height: 130px
+            - border-radius: 22px
+            - background: var(--family-shared)
+            - box-shadow: none
+          grid:
+            - grid-template-areas: '"i n" "i s"'
+            - grid-template-columns: 108px auto
+            - justify-items: start
+            - padding: 0 22px
+          icon:
+            - width: 64px
+            - color: "#1B2430"
+          name:
+            - font-size: 0.9rem
+            - font-weight: 700
+            - letter-spacing: 0.14em
+            - text-transform: uppercase
+            - color: rgba(27,36,48,0.7)
+          state:
+            - font-size: 2.1rem
+            - font-weight: 800
+            - color: "#1B2430"
+            - line-height: 1.1
+
+      # The rest of the week, so nobody has to ask "what's tomorrow".
+      - type: custom:week-planner-card
+        title: This week
+        days: 7
+        startingDay: today
+        locale: en-AU
+        showLegend: false
+        hideDaysWithoutEvents: false
+        compact: true
+        eventBackground: transparent
+        dayFormat: "'<span class=\"fam-dow\">'ccc'</span><span class=\"fam-num\">'d'</span>'"
+        calendars:
+          - entity: calendar.mealie_dinner
+            name: Dinner
+            color: "#F7B731"
+            icon: mdi:silverware-fork-knife
+        card_mod:
+          style: |
+            ha-card { border: none; box-shadow: none; background: transparent; }
+            .fam-dow {
+              display: block; font-size: 0.66rem; font-weight: 700;
+              letter-spacing: 0.14em; text-transform: uppercase;
+              color: var(--secondary-text-color);
+            }
+            .fam-num {
+              display: block; font-size: 1.6rem; font-weight: 800;
+              line-height: 1; color: var(--primary-text-color);
+            }
+            .event { border-radius: 10px !important; font-weight: 600 !important; }
+
+      # Presets. One tap starts the next free timer - you say what you are
+      # cooking, you do not pick a timer number.
+      - type: grid
+        columns: 4
+        square: false
+        cards:
+          - type: custom:button-card
+            name: Eggs
+            label: 6 min
+            show_label: true
+            icon: mdi:egg
+            tap_action:
+              action: call-service
+              service: script.family_start_kitchen_timer
+              service_data: {minutes: 6, label: Eggs}
+            styles: &preset
+              card:
+                - height: 104px
+                - border-radius: 18px
+                - box-shadow: none
+                - background: "#FFFFFF"
+                - border: 3px solid var(--divider-color)
+              icon:
+                - width: 40px
+                - color: var(--family-nick)
+              name:
+                - font-size: 1.05rem
+                - font-weight: 800
+              label:
+                - font-size: 0.85rem
+                - font-weight: 700
+                - color: var(--secondary-text-color)
+          - type: custom:button-card
+            name: Pasta
+            label: 10 min
+            show_label: true
+            icon: mdi:noodles
+            tap_action:
+              action: call-service
+              service: script.family_start_kitchen_timer
+              service_data: {minutes: 10, label: Pasta}
+            styles: *preset
+          - type: custom:button-card
+            name: Rice
+            label: 20 min
+            show_label: true
+            icon: mdi:rice
+            tap_action:
+              action: call-service
+              service: script.family_start_kitchen_timer
+              service_data: {minutes: 20, label: Rice}
+            styles: *preset
+          - type: custom:button-card
+            name: Custom
+            label: Set minutes below
+            show_label: true
+            icon: mdi:timer-cog-outline
+            tap_action:
+              action: call-service
+              service: script.family_start_kitchen_timer
+              service_data:
+                minutes: "[[[ return states['input_number.kitchen_custom_minutes'].state ]]]"
+                label: Timer
+            styles: *preset
+
+      - type: entities
+        entities:
+          - entity: input_number.kitchen_custom_minutes
+            name: Custom minutes
+        card_mod:
+          style: |
+            ha-card { box-shadow: none; border: none; }
+
+      # What is actually cooking. Updates on state change, which is fine - the
+      # ticking countdown lives in the card below.
       - type: markdown
         content: >-
-          Phase 5 fills this in: the week's dinners from Mealie with tonight's enlarged, the full recipe on tap, and the kitchen timers.
-  - type: grid
-    cards:
+          {% set on = namespace(items=[]) %}
+          {% for n in [1, 2, 3, 4] %}
+            {% set lbl = states('input_text.kitchen_timer_' ~ n ~ '_label') %}
+            {% if is_state('timer.kitchen_timer_' ~ n, 'active') and lbl not in ['', 'unknown'] %}
+              {% set on.items = on.items + [lbl] %}
+            {% endif %}
+          {% endfor %}
+          {% if on.items %}### On the stove: {{ on.items | join(' · ') }}
+          {% else %}### Nothing cooking{% endif %}
+        card_mod:
+          style: |
+            ha-card { box-shadow: none; border: none; background: transparent; }
+
+      - type: entities
+        title: Timers
+        entities:
+          - timer.kitchen_timer_1
+          - timer.kitchen_timer_2
+          - timer.kitchen_timer_3
+          - timer.kitchen_timer_4
+        card_mod:
+          style: |
+            ha-card { box-shadow: none; border: none; border-radius: 18px; }
+            .card-content { font-size: 1.1rem; font-weight: 600; }
+
       - !include _navbar.yaml

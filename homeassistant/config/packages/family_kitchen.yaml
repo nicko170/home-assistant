@@ -1,0 +1,173 @@
+# Kitchen - dinner plan and timers.
+#
+# TONIGHT'S DINNER
+# Mealie's calendar ENTITY exposes no message attribute (verified 2026-08-23:
+# attributes are just friendly_name, even with a plan set), so the meal has to
+# come from the calendar API via calendar.get_events. Parking the result in a
+# text helper means the Kitchen and Home views both read one cheap entity
+# instead of each firing their own service call.
+#
+# TIMERS
+# Four timers with a "next free one wins" script, so a preset is genuinely one
+# tap - you do not pick a timer, you just say what you are cooking. Each timer
+# has a paired label helper because timer entities cannot carry a name, and
+# "Timer 3: 4:12 left" is useless when three things are on the stove.
+
+input_text:
+  family_dinner_tonight:
+    name: Dinner tonight
+    icon: mdi:silverware-variant
+    max: 100
+  kitchen_timer_1_label: {name: Timer 1 label, max: 40}
+  kitchen_timer_2_label: {name: Timer 2 label, max: 40}
+  kitchen_timer_3_label: {name: Timer 3 label, max: 40}
+  kitchen_timer_4_label: {name: Timer 4 label, max: 40}
+
+input_number:
+  kitchen_custom_minutes:
+    name: Custom timer minutes
+    icon: mdi:timer-cog-outline
+    min: 1
+    max: 180
+    step: 1
+    mode: box
+
+timer:
+  kitchen_timer_1: {name: Kitchen timer 1, icon: "mdi:timer-outline"}
+  kitchen_timer_2: {name: Kitchen timer 2, icon: "mdi:timer-outline"}
+  kitchen_timer_3: {name: Kitchen timer 3, icon: "mdi:timer-outline"}
+  kitchen_timer_4: {name: Kitchen timer 4, icon: "mdi:timer-outline"}
+
+script:
+  # ------------------------------------------------------------------
+  # Start the first idle timer. One tap, no timer picking.
+  # ------------------------------------------------------------------
+  family_start_kitchen_timer:
+    alias: Start a kitchen timer
+    icon: mdi:timer-play-outline
+    mode: single
+    fields:
+      minutes:
+        description: How long, in minutes
+        example: 10
+        required: true
+        selector: {number: {min: 1, max: 180}}
+      label:
+        description: What is cooking
+        example: Pasta
+        required: true
+        selector: {text: null}
+    sequence:
+      - variables:
+          # A plain string, not a list - script variables are stringified, and a
+          # datetime or bool round-tripping through here is what broke the
+          # calendar composer. See packages/family_calendar.yaml.
+          slot: >-
+            {%- set ns = namespace(free='') -%}
+            {%- for n in [1, 2, 3, 4] -%}
+              {%- if ns.free == '' and is_state('timer.kitchen_timer_' ~ n, 'idle') -%}
+                {%- set ns.free = n | string -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.free }}
+
+      # All four running is a real kitchen state, not an error. Say so rather
+      # than failing silently.
+      - if:
+          - condition: template
+            value_template: "{{ slot == '' }}"
+        then:
+          - action: persistent_notification.create
+            data:
+              title: All timers busy
+              message: All four kitchen timers are running. Stop one and try again.
+          - stop: No free timer
+
+      - action: input_text.set_value
+        target:
+          entity_id: "input_text.kitchen_timer_{{ slot }}_label"
+        data:
+          value: "{{ label }}"
+
+      - action: timer.start
+        target:
+          entity_id: "timer.kitchen_timer_{{ slot }}"
+        data:
+          duration: >-
+            {{ '%02d:%02d:00' % ((minutes | int) // 60, (minutes | int) % 60) }}
+
+  # ------------------------------------------------------------------
+  # Pull tonight's dinner out of the Mealie calendar.
+  # ------------------------------------------------------------------
+  family_refresh_dinner:
+    alias: Refresh tonight's dinner
+    icon: mdi:refresh
+    mode: single
+    sequence:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.mealie_dinner
+        data:
+          start_date_time: "{{ today_at('00:00') }}"
+          duration:
+            hours: 24
+        response_variable: found
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.family_dinner_tonight
+        data:
+          # Degrades to a friendly line rather than an empty box. A blank card
+          # on a kitchen wall reads as broken.
+          value: >-
+            {%- set evs = found['calendar.mealie_dinner'].events -%}
+            {{ evs[0].summary if evs | count > 0 else 'Nothing planned yet' }}
+
+automation:
+  - id: family_kitchen_dinner_refresh
+    alias: "Kitchen: refresh tonight's dinner"
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        hours: "/1"
+      - trigger: state
+        entity_id: calendar.mealie_dinner
+    actions:
+      - action: script.family_refresh_dinner
+
+  # A timer that ends silently on a wall panel is worthless - you are across
+  # the room with your hands full. Announce, then clear the label.
+  - id: family_kitchen_timer_finished
+    alias: "Kitchen: timer finished"
+    mode: parallel
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.kitchen_timer_1
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.kitchen_timer_2
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.kitchen_timer_3
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.kitchen_timer_4
+    actions:
+      - variables:
+          slot: "{{ trigger.event.data.entity_id | replace('timer.kitchen_timer_', '') }}"
+          what: "{{ states('input_text.kitchen_timer_' ~ slot ~ '_label') }}"
+      - action: persistent_notification.create
+        data:
+          title: Timer finished
+          message: "{{ what if what not in ['', 'unknown'] else 'Kitchen timer' }} is done."
+      - action: input_text.set_value
+        target:
+          entity_id: "input_text.kitchen_timer_{{ slot }}_label"
+        data:
+          value: ""
