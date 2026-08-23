@@ -3,6 +3,8 @@
 **Date:** 2026-08-23
 **Target device:** Samsung Galaxy Tab, wall-mounted in the kitchen, always on
 **Family:** Nick, Elle, Aria (4), Eden (1)
+**O365 tenant:** `pratley.au` (self-owned, also `npratley.net`) — accounts `nick@pratley.au`,
+`elle@pratley.au`. Nick is tenant admin.
 **Inspiration:** commercial Skylight Calendar; DIY thread
 https://community.home-assistant.io/t/diy-family-calendar-skylight/844830 and its source repo
 https://github.com/mohesles/my-skylight-calendar (Google Calendar based — we substitute Outlook).
@@ -143,8 +145,9 @@ dinner, timer countdown) are sized to be read from ~3 m.
 
 ### Calendar
 
-**Structure.** One shared Outlook calendar named `Family`, owned by Nick, shared read/write with
-Elle. Per-person events carry a subject prefix: `Aria: Swimming`. Unprefixed events are whole-family.
+**Structure.** One shared Outlook calendar named `Family`, owned by `nick@pratley.au` and shared
+read/write with `elle@pratley.au`. Both accounts are in the same self-owned tenant, so this is
+internal sharing — no external-sharing policy to negotiate. Per-person events carry a subject prefix: `Aria: Swimming`. Unprefixed events are whole-family.
 
 **Why a prefix and not Outlook categories.** MS365-Calendar can derive multiple HA calendar entities
 from a single `cal_id` by listing several `entities` under it, each with its own `search` (subject
@@ -317,7 +320,7 @@ live.
 
 | Risk | Mitigation |
 |---|---|
-| **The O365 tenant forbids app registration, or requires admin consent.** This is the single biggest threat — it blocks Phases 0 and 3 entirely and is outside our control. | Establish this on day one, before anything else is built. If the work tenant blocks it, fall back to a free personal Outlook.com account used solely as the family calendar and shared with both adults. Elle's phone sees it identically. |
+| Entra ID app registration and admin consent | Low risk: `pratley.au` is self-owned and Nick is tenant admin, so the registration and its consent are self-service rather than a request to someone else. Still sequenced first in Phase 0 because everything calendar-shaped depends on it, and because the client secret has an expiry that must be diarised — see the token-expiry failure mode. |
 | Phases 4–7 all depend on Phase 0 external services | Phases 1 and 2 depend on none of them and can proceed in parallel while the Entra registration is sorted. |
 | ChoreOps' hand-built view proves disproportionate | Named fallback: register ChoreOps' shipped dashboard as a second storage-mode dashboard that the Chores tab links to. Accepts one non-version-controlled dashboard and a visible styling seam; taken only if Phase 4 stalls. |
 | Mealie load on the mac mini | Deploy it first, in Phase 0, and observe before anything depends on it. It is a small service, but the host has known socket-pressure sensitivity documented in `packages/extras.yaml`. |
@@ -327,8 +330,11 @@ live.
 
 ## Prerequisites on the user
 
-1. **Confirm whether the O365 tenant permits an Entra ID app registration** — do this first.
-2. Create the shared `Family` calendar in Outlook and share it read/write with Elle.
+1. Create the Entra ID app registration in the `pratley.au` tenant and grant its consent (both
+   self-service as tenant admin). Record the secret's expiry date — the calendar silently stops
+   syncing when it lapses.
+2. Create the shared `Family` calendar on `nick@pratley.au` and share it read/write with
+   `elle@pratley.au`.
 3. Buy and mount the Galaxy Tab, with in-wall USB-C power.
 4. Buy the Fully Kiosk Plus licence (~$8, one-time).
 5. Choose the PIN; it goes in `secrets.yaml` as `family_pin`.
