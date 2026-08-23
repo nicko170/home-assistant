@@ -60,27 +60,43 @@ cards:
         locale: en-AU
         showLegend: false
         hideDaysWithoutEvents: false
-        compact: true
         eventBackground: transparent
-        dayFormat: "'<span class=\"fam-dow\">'ccc'</span><span class=\"fam-num\">'d'</span>'"
+        columns:
+          extraSmall: 1
+          small: 3
+          medium: 4
+          large: 7
+          extraLarge: 7
         calendars:
           - entity: calendar.mealie_dinner
             name: Dinner
             color: "#F7B731"
             icon: mdi:silverware-fork-knife
         card_mod:
+          # Themed through the card's own custom properties. No dayFormat: the
+          # card renders .date .number and .date .text itself, and injecting
+          # HTML there overlapped the days on wide screens.
           style: |
-            ha-card { border: none; box-shadow: none; background: transparent; }
-            .fam-dow {
-              display: block; font-size: "clamp(0.62rem, 1.6vw, 0.66rem)"; font-weight: 700;
-              letter-spacing: 0.14em; text-transform: uppercase;
-              color: var(--secondary-text-color);
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              border: none;
+              --days-spacing: clamp(8px, 1.4vw, 16px);
+              --day-date-number-font-size: clamp(1.2rem, 3vw, 1.9rem);
+              --day-date-number-line-height: 1.05em;
+              --day-date-text-font-size: clamp(0.58rem, 1.3vw, 0.72rem);
+              --event-padding: clamp(6px, 1vw, 10px);
+              --event-border-radius: 12px;
+              --event-border-width: 6px;
+              --event-font-size: clamp(0.86rem, 1.8vw, 1rem);
             }
-            .fam-num {
-              display: block; font-size: "clamp(1.15rem, 3.6vw, 1.6rem)"; font-weight: 800;
-              line-height: 1; color: var(--primary-text-color);
+            .container .day .date .number { font-weight: 800; }
+            .container .day .date .text {
+              text-transform: uppercase;
+              letter-spacing: 0.12em;
+              font-weight: 700;
+              opacity: 0.6;
             }
-            .event { border-radius: 10px !important; font-weight: 600 !important; }
 
       # Presets. One tap starts the next free timer - you say what you are
       # cooking, you do not pick a timer number.

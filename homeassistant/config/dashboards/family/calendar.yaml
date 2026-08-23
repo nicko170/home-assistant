@@ -52,25 +52,27 @@ cards:
         startingDay: today
         locale: en-AU
         timeFormat: h:mma
-        # dayFormat is a LUXON format string. Luxon parses every unquoted letter
-        # as a token, so raw HTML here renders as garbage ("0pam35"). Literal
-        # text must sit inside Luxon single quotes, which forces double quotes
-        # on the HTML attributes. Renders a tracked weekday above a big numeral.
-        dayFormat: "'<span class=\"fam-dow\">'cccc'</span><span class=\"fam-num\">'d'</span>'"
         showLegend: true
         legendToggle: true
         hidePastEvents: false
         hideDaysWithoutEvents: false
-        compact: false
         eventBackground: transparent
+        # Columns by CARD WIDTH, not device. iPhone lands in extraSmall and
+        # gets one full-width day; iPad landscape (~1180) lands in medium and
+        # gets four, which reads far better than seven slivers; the wall tablet
+        # in landscape gets the full week.
+        columns:
+          extraSmall: 1
+          small: 3
+          medium: 4
+          large: 7
+          extraLarge: 7
         weather:
           entity: weather.forecast_home
           showCondition: true
           showTemperature: true
           showLowTemperature: true
         calendars:
-          # Shared first: whole-family events are the backdrop the individuals
-          # sit against.
           - entity: calendar.family_shared
             name: Everyone
             color: "#F7B731"
@@ -96,39 +98,52 @@ cards:
             icon: mdi:baby-face-outline
             filterText: "^Eden:\\s*"
         card_mod:
+          # The card is built to be themed through these custom properties, and
+          # sizes each day with
+          #   width: calc((100% - (cols - 1) * spacing) / cols)
+          # so --days-columns must be left alone - the `columns:` config above
+          # drives it. Setting it here would break the responsive behaviour.
+          #
+          # It also renders .date .number and .date .text natively, which is why
+          # there is no dayFormat here any more: injecting HTML through
+          # dayFormat put block elements inside the positioned .date and the
+          # days overlapped on wide screens.
           style: |
             ha-card {
-              border: none;
-              box-shadow: none;
               background: transparent;
-              padding: 4px 8px 0 8px;
+              box-shadow: none;
+              border: none;
+              padding: 0 4px;
+
+              --days-spacing: clamp(8px, 1.4vw, 18px);
+              --day-date-number-font-size: clamp(1.5rem, 4vw, 2.6rem);
+              --day-date-number-line-height: 1.05em;
+              --day-date-text-font-size: clamp(0.6rem, 1.4vw, 0.76rem);
+
+              --events-margin-top: clamp(6px, 1vw, 12px);
+              --event-spacing: 6px;
+              --event-padding: clamp(6px, 1vw, 11px);
+              --event-border-radius: 12px;
+              --event-border-width: 6px;
+              --event-font-size: clamp(0.86rem, 1.8vw, 1.02rem);
+              --event-line-height: 1.3em;
+              --event-icon-size: clamp(14px, 2vw, 18px);
+
+              --legend-spacing: clamp(10px, 1.6vw, 16px);
+              --legend-dot-size: 14px;
+              --weather-icon-size: clamp(20px, 2.6vw, 30px);
+              --weather-temperature-font-size: clamp(0.68rem, 1.4vw, 0.85rem);
             }
-            .fam-dow {
-              display: block;
-              font-size: "clamp(0.68rem, 1.7vw, 0.72rem)";
-              font-weight: 700;
-              letter-spacing: 0.14em;
+            /* The numeral carries the size; the weekday is a quiet label. */
+            .container .day .date .number { font-weight: 800; }
+            .container .day .date .text {
               text-transform: uppercase;
-              color: var(--secondary-text-color);
-              line-height: 1.4;
+              letter-spacing: 0.12em;
+              font-weight: 700;
+              opacity: 0.6;
             }
-            .fam-num {
-              display: block;
-              font-size: "clamp(1.4rem, 4.6vw, 2.1rem)";
-              font-weight: 800;
-              line-height: 1;
-              color: var(--primary-text-color);
-            }
-            .event {
-              border-radius: 12px !important;
-              padding: 7px 10px !important;
-              margin-bottom: 6px !important;
-              font-size: "clamp(0.92rem, 2.5vw, 1.05rem)" !important;
-              font-weight: 600 !important;
-            }
-            .time { font-weight: 700 !important; opacity: 0.75; }
-            .legend { gap: 14px !important; padding-top: 10px !important; }
-            .legend > div { font-size: "clamp(0.9rem, 2.4vw, 1rem)" !important; font-weight: 700 !important; }
+            /* Legend is Aria's filter control - make it a real target. */
+            .container .legend { font-weight: 700; }
 
       # Composer. Bubble Card v3.2.0+ standalone format: content lives in this
       # card's own cards: list. "Standalone" means it no longer NEEDS a

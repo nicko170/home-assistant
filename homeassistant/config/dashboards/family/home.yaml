@@ -96,10 +96,14 @@ cards:
         locale: en-AU
         timeFormat: h:mma
         showLegend: false
-        compact: true
-        eventBackground: transparent
         hideDaysWithoutEvents: false
-        dayFormat: "'<span class=\"fam-today\">'cccc'</span>'"
+        eventBackground: transparent
+        columns:
+          extraSmall: 1
+          small: 1
+          medium: 1
+          large: 1
+          extraLarge: 1
         calendars:
           - entity: calendar.family_shared
             name: Everyone
@@ -122,13 +126,25 @@ cards:
             color: "#26C6A0"
             filterText: "^Eden:\\s*"
         card_mod:
+          # One day, full width - the big date already sits above this, so the
+          # day numeral is suppressed and the events carry the whole card.
           style: |
-            ha-card { border: none; box-shadow: none; background: transparent; }
-            .fam-today {
-              font-size: "clamp(0.76rem, 1.9vw, 0.82rem)"; font-weight: 700; letter-spacing: 0.16em;
-              text-transform: uppercase; color: var(--secondary-text-color);
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              border: none;
+              --days-spacing: 0px;
+              --day-date-number-font-size: 0;
+              --day-date-number-line-height: 0;
+              --day-date-text-font-size: 0;
+              --events-margin-top: 0px;
+              --event-padding: clamp(8px, 1.2vw, 12px);
+              --event-border-radius: 12px;
+              --event-border-width: 6px;
+              --event-font-size: clamp(0.92rem, 2vw, 1.08rem);
+              --event-line-height: 1.35em;
             }
-            .event { border-radius: 12px !important; font-weight: 600 !important; font-size: "clamp(0.92rem, 2.5vw, 1.05rem)" !important; }
+            .container .day .date { display: none; }
 
       # Aria's outstanding chores, as a count rather than a list - the list is
       # one tap away and a count is what you read in passing.
