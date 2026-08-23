@@ -23,6 +23,12 @@ cards:
       - type: grid
         columns: 3
         square: false
+        card_mod:
+          style: |
+            #root {
+              grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+              gap: clamp(8px, 1.6vw, 16px) !important;
+            }
         cards:
           - type: custom:button-card
             entity: light.back_yard_floodlight
@@ -31,25 +37,25 @@ cards:
             tap_action: {action: toggle}
             styles: &tile
               card:
-                - height: 130px
+                - height: "clamp(96px, 18vw, 130px)"
                 - border-radius: 22px
                 - box-shadow: none
-                - background: "#FFFFFF"
+                - background: "var(--family-tile, var(--card-background-color))"
                 - border: 3px solid var(--divider-color)
               icon:
-                - width: 56px
+                - width: "clamp(38px, 7.4vw, 56px)"
                 - color: var(--secondary-text-color)
               name:
-                - font-size: 1rem
+                - font-size: "clamp(0.9rem, 2.4vw, 1rem)"
                 - font-weight: 700
             state: &tilestate
               - value: "on"
                 styles:
                   card:
-                    - background: "#FFF8E6"
-                    - border: 3px solid var(--family-shared)
+                    - background: "var(--family-tile-on, var(--card-background-color))"
+                    - border: 3px solid "var(--family-shared, #F7B731)"
                   icon:
-                    - color: var(--family-shared)
+                    - color: "var(--family-shared, #F7B731)"
 
           - type: custom:button-card
             entity: media_player.lounge_room
@@ -89,11 +95,17 @@ cards:
               card_mod:
                 style: |
                   ha-card { box-shadow: none; border: none; background: transparent; }
-                  h3 { font-size: 2.4rem; letter-spacing: 0.35em; margin: 4px 0; }
+                  h3 { font-size: "clamp(1.6rem, 5vw, 2.4rem)"; letter-spacing: 0.35em; margin: 4px 0; }
 
             - type: grid
               columns: 3
               square: false
+              card_mod:
+                style: |
+                  #root {
+                    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)) !important;
+                    gap: clamp(8px, 1.6vw, 16px) !important;
+                  }
               cards:
                 - &k1
                   type: custom:button-card
@@ -104,13 +116,13 @@ cards:
                     service_data: {digit: "1"}
                   styles: &key
                     card:
-                      - height: 84px
+                      - height: "clamp(66px, 12vw, 84px)"
                       - border-radius: 18px
                       - box-shadow: none
-                      - background: "#FFFFFF"
+                      - background: "var(--family-tile, var(--card-background-color))"
                       - border: 3px solid var(--divider-color)
                     name:
-                      - font-size: 1.7rem
+                      - font-size: "clamp(1.2rem, 3.8vw, 1.7rem)"
                       - font-weight: 800
                 - <<: *k1
                   name: "2"
@@ -168,18 +180,18 @@ cards:
                 service_data: {entity_id: cover.garage_door_door}
               styles:
                 card:
-                  - height: 110px
+                  - height: "clamp(88px, 16vw, 110px)"
                   - border-radius: 22px
                   - box-shadow: none
-                  - background: var(--family-nick)
+                  - background: "var(--family-nick, #2E86DE)"
                 grid:
                   - grid-template-areas: '"i n" "i s"'
-                  - grid-template-columns: 92px auto
+                  - grid-template-columns: clamp(58px, 11vw, 92px) auto
                   - justify-items: start
                   - padding: 0 20px
-                icon: [width: 54px, color: "#FFFFFF"]
-                name: [font-size: 1.05rem, font-weight: 800, color: "#FFFFFF"]
-                state: [font-size: 1.5rem, font-weight: 800, color: rgba(255,255,255,0.9)]
+                icon: [width: "clamp(36px, 7vw, 54px)", color: "var(--family-on-strong, #FFFFFF)"]
+                name: [font-size: "clamp(0.92rem, 2.5vw, 1.05rem)", font-weight: 800, color: "var(--family-on-strong, #FFFFFF)"]
+                state: [font-size: "clamp(1.1rem, 3.4vw, 1.5rem)", font-weight: 800, color: rgba(255,255,255,0.9)]
 
             - type: map
               entities:
@@ -191,6 +203,12 @@ cards:
             - type: grid
               columns: 2
               square: false
+              card_mod:
+                style: |
+                  #root {
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+                    gap: clamp(8px, 1.6vw, 16px) !important;
+                  }
               cards:
                 - type: picture-entity
                   entity: camera.doorbell_fluent
@@ -222,11 +240,11 @@ cards:
                 service_data: {}
               styles:
                 card:
-                  - height: 64px
+                  - height: "clamp(54px, 10vw, 64px)"
                   - border-radius: 18px
                   - box-shadow: none
-                  - background: "#FFFFFF"
+                  - background: "var(--family-tile, var(--card-background-color))"
                   - border: 3px solid var(--divider-color)
-                name: [font-size: 1.05rem, font-weight: 800]
+                name: [font-size: "clamp(0.92rem, 2.5vw, 1.05rem)", font-weight: 800]
 
       - !include _navbar.yaml

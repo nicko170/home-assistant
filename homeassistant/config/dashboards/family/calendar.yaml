@@ -29,21 +29,21 @@ cards:
           navigation_path: "#add-event"
         styles:
           card:
-            - height: 62px
+            - height: "clamp(54px, 10vw, 62px)"
             - border-radius: 18px
-            - background: var(--family-shared)
+            - background: "var(--family-shared, #F7B731)"
             - box-shadow: none
           name:
-            - font-size: 1.15rem
+            - font-size: "clamp(0.98rem, 2.7vw, 1.15rem)"
             - font-weight: 800
             - letter-spacing: 0.02em
-            - color: "#1B2430"
+            - color: "var(--family-on-warm, #1B2430)"
           icon:
-            - width: 30px
-            - color: "#1B2430"
+            - width: "clamp(24px, 4.4vw, 30px)"
+            - color: "var(--family-on-warm, #1B2430)"
           grid:
             - grid-template-areas: '"i n"'
-            - grid-template-columns: 44px auto
+            - grid-template-columns: clamp(34px, 7vw, 44px) auto
             - justify-items: start
             - padding: 0 18px
 
@@ -105,7 +105,7 @@ cards:
             }
             .fam-dow {
               display: block;
-              font-size: 0.72rem;
+              font-size: "clamp(0.68rem, 1.7vw, 0.72rem)";
               font-weight: 700;
               letter-spacing: 0.14em;
               text-transform: uppercase;
@@ -114,7 +114,7 @@ cards:
             }
             .fam-num {
               display: block;
-              font-size: 2.1rem;
+              font-size: "clamp(1.4rem, 4.6vw, 2.1rem)";
               font-weight: 800;
               line-height: 1;
               color: var(--primary-text-color);
@@ -123,12 +123,12 @@ cards:
               border-radius: 12px !important;
               padding: 7px 10px !important;
               margin-bottom: 6px !important;
-              font-size: 1.05rem !important;
+              font-size: "clamp(0.92rem, 2.5vw, 1.05rem)" !important;
               font-weight: 600 !important;
             }
             .time { font-weight: 700 !important; opacity: 0.75; }
             .legend { gap: 14px !important; padding-top: 10px !important; }
-            .legend > div { font-size: 1rem !important; font-weight: 700 !important; }
+            .legend > div { font-size: "clamp(0.9rem, 2.4vw, 1rem)" !important; font-weight: 700 !important; }
 
       # Composer. Bubble Card v3.2.0+ standalone format: content lives in this
       # card's own cards: list. "Standalone" means it no longer NEEDS a
@@ -153,7 +153,7 @@ cards:
             card_mod:
               style: |
                 ha-card { box-shadow: none; border: none; }
-                .card-content { font-size: 1.1rem; font-weight: 600; }
+                .card-content { font-size: "clamp(0.95rem, 2.6vw, 1.1rem)"; font-weight: 600; }
           - type: custom:button-card
             name: Save to calendar
             icon: mdi:check-bold
@@ -162,16 +162,16 @@ cards:
               service: script.family_add_event
             styles:
               card:
-                - height: 68px
+                - height: "clamp(56px, 11vw, 68px)"
                 - border-radius: 18px
-                - background: var(--family-aria)
+                - background: "var(--family-aria, #FF6B9D)"
                 - box-shadow: none
               name:
-                - font-size: 1.2rem
+                - font-size: "clamp(1rem, 2.8vw, 1.2rem)"
                 - font-weight: 800
-                - color: "#FFFFFF"
+                - color: "var(--family-on-strong, #FFFFFF)"
               icon:
-                - width: 30px
-                - color: "#FFFFFF"
+                - width: "clamp(24px, 4.4vw, 30px)"
+                - color: "var(--family-on-strong, #FFFFFF)"
 
       - !include _navbar.yaml

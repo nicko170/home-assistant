@@ -31,25 +31,25 @@ cards:
           action: none
         styles:
           card:
-            - height: 120px
+            - height: "clamp(92px, 17vw, 120px)"
             - border-radius: 22px
-            - background: var(--family-aria)
+            - background: "var(--family-aria, #FF6B9D)"
             - box-shadow: none
           grid:
             - grid-template-areas: '"i s" "i n"'
-            - grid-template-columns: 120px auto
+            - grid-template-columns: clamp(72px, 14vw, 120px) auto
             - justify-items: start
             - padding: 0 22px
           icon:
-            - width: 72px
-            - color: "#FFFFFF"
+            - width: "clamp(46px, 9vw, 72px)"
+            - color: "var(--family-on-strong, #FFFFFF)"
           state:
-            - font-size: 3.2rem
+            - font-size: "clamp(1.9rem, 6.6vw, 3.2rem)"
             - font-weight: 800
-            - color: "#FFFFFF"
+            - color: "var(--family-on-strong, #FFFFFF)"
             - line-height: 1
           name:
-            - font-size: 0.95rem
+            - font-size: "clamp(0.85rem, 2.2vw, 0.95rem)"
             - font-weight: 700
             - letter-spacing: 0.12em
             - text-transform: uppercase
@@ -70,7 +70,7 @@ cards:
           minmax: 'off'
           value: inside
           name: inside
-        color: var(--family-shared)
+        color: "var(--family-shared, #F7B731)"
         card_mod:
           style: |
             ha-card { box-shadow: none; border: none; border-radius: 18px; }
@@ -79,6 +79,12 @@ cards:
       - type: grid
         columns: 3
         square: false
+        card_mod:
+          style: |
+            #root {
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+              gap: clamp(8px, 1.6vw, 16px) !important;
+            }
         cards:
           - type: custom:button-card
             entity: sensor.aria_choreops_chore_status_get_dressed
@@ -92,36 +98,36 @@ cards:
                 entity_id: button.aria_choreops_claim_chore_get_dressed
             styles: &tile
               card:
-                - height: 150px
+                - height: "clamp(104px, 20vw, 150px)"
                 - border-radius: 22px
                 - box-shadow: none
-                - background: "#FFFFFF"
+                - background: "var(--family-tile, var(--card-background-color))"
                 - border: 3px solid var(--divider-color)
               icon:
-                - width: 68px
-                - color: var(--family-aria)
+                - width: "clamp(44px, 8.6vw, 68px)"
+                - color: "var(--family-aria, #FF6B9D)"
               name:
-                - font-size: 1.05rem
+                - font-size: "clamp(0.92rem, 2.5vw, 1.05rem)"
                 - font-weight: 700
                 - color: var(--primary-text-color)
             state: &tilestate
               - value: claimed
                 styles:
                   card:
-                    - background: "#FFF4F8"
-                    - border: 3px dashed var(--family-aria)
+                    - background: "var(--family-tile-claimed, var(--card-background-color))"
+                    - border: 3px dashed "var(--family-aria, #FF6B9D)"
                     - opacity: "0.75"
                   icon:
-                    - color: var(--family-aria)
+                    - color: "var(--family-aria, #FF6B9D)"
               - value: completed
                 styles:
                   card:
-                    - background: "#E9F9F1"
-                    - border: 3px solid "#26C6A0"
+                    - background: "var(--family-tile-done, var(--card-background-color))"
+                    - border: 3px solid "var(--family-eden, #26C6A0)"
                   icon:
-                    - color: "#26C6A0"
+                    - color: "var(--family-eden, #26C6A0)"
                   name:
-                    - color: "#1B7A5A"
+                    - color: "var(--family-done-ink, #1B7A5A)"
               - value: overdue
                 styles:
                   card:

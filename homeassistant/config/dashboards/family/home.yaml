@@ -27,17 +27,23 @@ cards:
             ha-card { box-shadow: none; border: none; background: transparent; }
             .fam-hero { padding: 4px 6px 0 6px; }
             .fam-dow {
-              font-size: 1rem; font-weight: 800; letter-spacing: 0.22em;
+              font-size: "clamp(0.9rem, 2.4vw, 1rem)"; font-weight: 800; letter-spacing: 0.22em;
               text-transform: uppercase; color: var(--secondary-text-color);
             }
             .fam-date {
-              font-size: 3.4rem; font-weight: 800; line-height: 1.05;
+              font-size: "clamp(2rem, 7vw, 3.4rem)"; font-weight: 800; line-height: 1.05;
               color: var(--primary-text-color);
             }
 
       - type: grid
         columns: 2
         square: false
+        card_mod:
+          style: |
+            #root {
+              grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+              gap: clamp(8px, 1.6vw, 16px) !important;
+            }
         cards:
           - type: weather-forecast
             entity: weather.forecast_home
@@ -58,27 +64,27 @@ cards:
             styles:
               card:
                 - height: 100%
-                - min-height: 150px
+                - min-height: "clamp(104px, 20vw, 150px)"
                 - border-radius: 22px
-                - background: var(--family-shared)
+                - background: "var(--family-shared, #F7B731)"
                 - box-shadow: none
               grid:
                 - grid-template-areas: '"i" "n" "s"'
                 - grid-template-columns: 1fr
                 - justify-items: start
                 - padding: 18px 22px
-              icon: [width: 44px, color: "#1B2430"]
+              icon: [width: "clamp(30px, 6vw, 44px)", color: "var(--family-on-warm, #1B2430)"]
               name:
-                - font-size: 0.82rem
+                - font-size: "clamp(0.76rem, 1.9vw, 0.82rem)"
                 - font-weight: 700
                 - letter-spacing: 0.14em
                 - text-transform: uppercase
                 - color: rgba(27,36,48,0.7)
                 - padding-top: 8px
               state:
-                - font-size: 1.7rem
+                - font-size: "clamp(1.2rem, 3.8vw, 1.7rem)"
                 - font-weight: 800
-                - color: "#1B2430"
+                - color: "var(--family-on-warm, #1B2430)"
                 - text-align: start
 
       # Today only. The week lives on the Calendar tab; repeating it here would
@@ -119,10 +125,10 @@ cards:
           style: |
             ha-card { border: none; box-shadow: none; background: transparent; }
             .fam-today {
-              font-size: 0.82rem; font-weight: 700; letter-spacing: 0.16em;
+              font-size: "clamp(0.76rem, 1.9vw, 0.82rem)"; font-weight: 700; letter-spacing: 0.16em;
               text-transform: uppercase; color: var(--secondary-text-color);
             }
-            .event { border-radius: 12px !important; font-weight: 600 !important; font-size: 1.05rem !important; }
+            .event { border-radius: 12px !important; font-weight: 600 !important; font-size: "clamp(0.92rem, 2.5vw, 1.05rem)" !important; }
 
       # Aria's outstanding chores, as a count rather than a list - the list is
       # one tap away and a count is what you read in passing.
@@ -150,26 +156,26 @@ cards:
           navigation_path: /home-family/chores
         styles:
           card:
-            - height: 104px
+            - height: "clamp(84px, 15vw, 104px)"
             - border-radius: 22px
-            - background: var(--family-aria)
+            - background: "var(--family-aria, #FF6B9D)"
             - box-shadow: none
           grid:
             - grid-template-areas: '"i n" "i l"'
-            - grid-template-columns: 96px auto
+            - grid-template-columns: clamp(60px, 12vw, 96px) auto
             - justify-items: start
             - padding: 0 22px
-          icon: [width: 56px, color: "#FFFFFF"]
+          icon: [width: "clamp(38px, 7.4vw, 56px)", color: "var(--family-on-strong, #FFFFFF)"]
           name:
-            - font-size: 0.82rem
+            - font-size: "clamp(0.76rem, 1.9vw, 0.82rem)"
             - font-weight: 700
             - letter-spacing: 0.14em
             - text-transform: uppercase
             - color: rgba(255,255,255,0.85)
           label:
-            - font-size: 1.5rem
+            - font-size: "clamp(1.1rem, 3.4vw, 1.5rem)"
             - font-weight: 800
-            - color: "#FFFFFF"
+            - color: "var(--family-on-strong, #FFFFFF)"
 
       # Running timers only. Conditional so the idle screen stays quiet when
       # nothing is cooking - a permanent "no timers" row is noise.

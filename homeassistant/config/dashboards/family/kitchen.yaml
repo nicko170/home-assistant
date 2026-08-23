@@ -28,28 +28,28 @@ cards:
           url_path: http://192.168.15.4:9925
         styles:
           card:
-            - height: 130px
+            - height: "clamp(96px, 18vw, 130px)"
             - border-radius: 22px
-            - background: var(--family-shared)
+            - background: "var(--family-shared, #F7B731)"
             - box-shadow: none
           grid:
             - grid-template-areas: '"i n" "i s"'
-            - grid-template-columns: 108px auto
+            - grid-template-columns: clamp(66px, 13vw, 108px) auto
             - justify-items: start
             - padding: 0 22px
           icon:
-            - width: 64px
-            - color: "#1B2430"
+            - width: "clamp(42px, 8.2vw, 64px)"
+            - color: "var(--family-on-warm, #1B2430)"
           name:
-            - font-size: 0.9rem
+            - font-size: "clamp(0.8rem, 2.1vw, 0.9rem)"
             - font-weight: 700
             - letter-spacing: 0.14em
             - text-transform: uppercase
             - color: rgba(27,36,48,0.7)
           state:
-            - font-size: 2.1rem
+            - font-size: "clamp(1.4rem, 4.6vw, 2.1rem)"
             - font-weight: 800
-            - color: "#1B2430"
+            - color: "var(--family-on-warm, #1B2430)"
             - line-height: 1.1
 
       # The rest of the week, so nobody has to ask "what's tomorrow".
@@ -72,12 +72,12 @@ cards:
           style: |
             ha-card { border: none; box-shadow: none; background: transparent; }
             .fam-dow {
-              display: block; font-size: 0.66rem; font-weight: 700;
+              display: block; font-size: "clamp(0.62rem, 1.6vw, 0.66rem)"; font-weight: 700;
               letter-spacing: 0.14em; text-transform: uppercase;
               color: var(--secondary-text-color);
             }
             .fam-num {
-              display: block; font-size: 1.6rem; font-weight: 800;
+              display: block; font-size: "clamp(1.15rem, 3.6vw, 1.6rem)"; font-weight: 800;
               line-height: 1; color: var(--primary-text-color);
             }
             .event { border-radius: 10px !important; font-weight: 600 !important; }
@@ -87,6 +87,12 @@ cards:
       - type: grid
         columns: 4
         square: false
+        card_mod:
+          style: |
+            #root {
+              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+              gap: clamp(8px, 1.6vw, 16px) !important;
+            }
         cards:
           - type: custom:button-card
             name: Eggs
@@ -99,19 +105,19 @@ cards:
               service_data: {minutes: 6, label: Eggs}
             styles: &preset
               card:
-                - height: 104px
+                - height: "clamp(84px, 15vw, 104px)"
                 - border-radius: 18px
                 - box-shadow: none
-                - background: "#FFFFFF"
+                - background: "var(--family-tile, var(--card-background-color))"
                 - border: 3px solid var(--divider-color)
               icon:
-                - width: 40px
-                - color: var(--family-nick)
+                - width: "clamp(28px, 5.6vw, 40px)"
+                - color: "var(--family-nick, #2E86DE)"
               name:
-                - font-size: 1.05rem
+                - font-size: "clamp(0.92rem, 2.5vw, 1.05rem)"
                 - font-weight: 800
               label:
-                - font-size: 0.85rem
+                - font-size: "clamp(0.78rem, 2vw, 0.85rem)"
                 - font-weight: 700
                 - color: var(--secondary-text-color)
           - type: custom:button-card
@@ -182,6 +188,6 @@ cards:
         card_mod:
           style: |
             ha-card { box-shadow: none; border: none; border-radius: 18px; }
-            .card-content { font-size: 1.1rem; font-weight: 600; }
+            .card-content { font-size: "clamp(0.95rem, 2.6vw, 1.1rem)"; font-weight: 600; }
 
       - !include _navbar.yaml

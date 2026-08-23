@@ -1,37 +1,71 @@
 # Family kitchen dashboard theme.
 #
-# Light, not dark. A kitchen in daylight makes a dark dashboard unreadable, and
-# Skylight's own identity is bright. Night legibility is handled by dimming the
-# tablet backlight in packages/family_kiosk.yaml, not by swapping themes - one
-# theme means one set of behaviours to reason about.
+# Two modes. HA picks light or dark automatically from the device, so the same
+# dashboard works on the wall tablet in a bright kitchen AND on a phone in bed.
+# The wall tablet is pinned bright by the Fully Kiosk brightness schedule; the
+# theme handles everyone else.
 #
-# Colours only. HA has no reliable global font-size variable, so the "readable
-# from 3 m" sizing is done per-card with card-mod in Phases 3-7 rather than
-# faked here with paper-font overrides that modern HA cards ignore.
+# The split that matters:
+#   SURFACES and TEXT come from HA's own variables, so they follow the mode.
+#   PERSON ACCENTS are identity - Aria is pink in both modes, or she has to
+#   re-learn her colour at night. They are declared once, outside `modes`.
+#
+# Cards must never hardcode a surface or a body-text colour. Text sitting ON an
+# accent (white on pink, dark on amber) IS hardcoded on purpose - the accent
+# does not change between modes, so neither should its contrast pair.
+#
+# Colours only. HA exposes no dependable global font-size variable, so type
+# scale is per-card with card-mod, using clamp() so it reflows on a phone.
 family:
-  # --- per-person accents ---------------------------------------------------
-  # HA turns every theme key into a CSS custom property with a "--" prefix, so
-  # these are usable from card-mod as var(--family-aria) and friends.
+  # --- person accents: identity, mode-independent -------------------------
   family-nick: "#2E86DE"
   family-elle: "#A55EEA"
   family-aria: "#FF6B9D"
   family-eden: "#26C6A0"
   family-shared: "#F7B731"
+  # Contrast pairs for text sitting on those accents.
+  family-on-warm: "#1B2430"
+  family-on-strong: "#FFFFFF"
 
-  # --- base palette ---------------------------------------------------------
-  primary-color: "#2E86DE"
-  accent-color: "#F7B731"
-  primary-background-color: "#F4F6FA"
-  secondary-background-color: "#FFFFFF"
-  card-background-color: "#FFFFFF"
-  primary-text-color: "#1B2430"
-  secondary-text-color: "#5A6779"
-  divider-color: "#E3E8EF"
-  state-icon-color: "#2E86DE"
+  modes:
+    light:
+      primary-color: "#2E86DE"
+      accent-color: "#F7B731"
+      primary-background-color: "#F4F6FA"
+      secondary-background-color: "#FFFFFF"
+      card-background-color: "#FFFFFF"
+      primary-text-color: "#1B2430"
+      secondary-text-color: "#5A6779"
+      divider-color: "#E3E8EF"
+      state-icon-color: "#2E86DE"
+      # Chore tile states
+      family-tile: "#FFFFFF"
+      family-tile-claimed: "#FFF4F8"
+      family-tile-done: "#E9F9F1"
+      family-done-ink: "#1B7A5A"
+      family-tile-on: "#FFF8E6"
+      family-shadow: "0 2px 10px rgba(27, 36, 48, 0.08)"
 
-  # --- card shape -----------------------------------------------------------
-  # Rounder and softer than HA's default: this sits on a wall in a kitchen, not
-  # in a control panel.
+    dark:
+      primary-color: "#5AA7F0"
+      accent-color: "#F7B731"
+      primary-background-color: "#11151B"
+      secondary-background-color: "#1A1F27"
+      card-background-color: "#1A1F27"
+      primary-text-color: "#EDF1F7"
+      secondary-text-color: "#9AA7B8"
+      divider-color: "#2B323D"
+      state-icon-color: "#5AA7F0"
+      # Tinted rather than washed out - a pale pink panel on a dark screen
+      # glares. These keep the same hue relationship at low luminance.
+      family-tile: "#1A1F27"
+      family-tile-claimed: "#2E1F27"
+      family-tile-done: "#13291F"
+      family-done-ink: "#5FD6A4"
+      family-tile-on: "#33270E"
+      family-shadow: "0 2px 10px rgba(0, 0, 0, 0.45)"
+
+  # --- card shape (shared) -------------------------------------------------
   ha-card-border-radius: "22px"
   ha-card-border-width: "0"
-  ha-card-box-shadow: "0 2px 10px rgba(27, 36, 48, 0.08)"
+  ha-card-box-shadow: "var(--family-shadow)"
