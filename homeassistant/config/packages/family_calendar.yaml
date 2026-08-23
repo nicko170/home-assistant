@@ -53,18 +53,15 @@ script:
     icon: mdi:calendar-plus
     mode: single
     sequence:
+      # Only primitives go in variables. HA renders script variables to their
+      # string form, so a datetime stored here comes back as a str (and a bool
+      # comes back as "False", which is TRUTHY in Jinja). Each template below is
+      # therefore self-contained - slightly repetitive, but correct.
       - variables:
           person: "{{ states('input_select.family_event_person') }}"
-          prefix: "{{ '' if person == 'Everyone' else person ~ ': ' }}"
           title: "{{ states('input_text.family_event_title') | trim }}"
-          length: "{{ states('input_select.family_event_length') }}"
-          starts: "{{ states('input_datetime.family_event_start') | as_datetime }}"
-          all_day: "{{ states('input_select.family_event_length') == 'All day' }}"
-          mins: >-
-            {{ {'30 minutes': 30, '1 hour': 60, '2 hours': 120}.get(
-                 states('input_select.family_event_length'), 60) }}
 
-      # An empty title would create an untitled event on a calendar two adults
+      # An empty title would put an untitled event on a calendar two adults
       # rely on. Fail quietly rather than write rubbish.
       - condition: template
         value_template: "{{ title | length > 0 }}"
@@ -73,17 +70,21 @@ script:
         target:
           entity_id: calendar.family_all
         data:
-          subject: "{{ prefix ~ title }}"
-          is_all_day: "{{ all_day }}"
+          subject: "{{ ('' if person == 'Everyone' else person ~ ': ') ~ title }}"
+          is_all_day: "{{ states('input_select.family_event_length') == 'All day' }}"
           start: >-
-            {{ starts.date().isoformat() if all_day else starts.isoformat() }}
+            {%- set s = states('input_datetime.family_event_start') | as_datetime -%}
+            {%- set ad = states('input_select.family_event_length') == 'All day' -%}
+            {{ s.date().isoformat() if ad else s.isoformat() }}
           end: >-
-            {{ (starts.date() + timedelta(days=1)).isoformat() if all_day
-               else (starts + timedelta(minutes=mins | int)).isoformat() }}
+            {%- set s = states('input_datetime.family_event_start') | as_datetime -%}
+            {%- set l = states('input_select.family_event_length') -%}
+            {%- set m = {'30 minutes': 30, '1 hour': 60, '2 hours': 120}.get(l, 60) -%}
+            {{ (s.date() + timedelta(days=1)).isoformat() if l == 'All day'
+               else (s + timedelta(minutes=m)).isoformat() }}
 
       # Clear the title so the next person does not edit someone else's text.
-      # Person and length deliberately persist - the same people book the same
-      # kinds of thing repeatedly.
+      # Person and length persist - the same people book the same kinds of thing.
       - action: input_text.set_value
         target:
           entity_id: input_text.family_event_title
