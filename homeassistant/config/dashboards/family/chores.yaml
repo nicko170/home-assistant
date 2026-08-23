@@ -1,19 +1,195 @@
-# Chores - Aria's picture tiles and star balance. Filled in Phase 4.
+# Chores - Aria's board. She is 4 and cannot read.
+#
+# Design intent: the icon is the content, the word is a caption for adults.
+# Every tile is a 150px target because a 4-year-old aims with a whole hand, and
+# the three states have to be distinguishable at a glance from across a kitchen
+# WITHOUT reading them:
+#
+#   pending    full colour, raised          "do this"
+#   claimed    faded with a dashed outline  "I did it, waiting for a grown-up"
+#   completed  green, flat, ticked          "done"
+#
+# Tapping a tile presses that chore's ChoreOps claim button. Claim needs
+# ChoreOps' own kiosk_mode enabled, because Aria has no Home Assistant account
+# by design - see the spec's non-goals.
 title: Chores
 path: chores
 icon: mdi:star-circle
-type: sections
-max_columns: 2
-sections:
-  - type: grid
+type: panel
+cards:
+  - type: vertical-stack
     cards:
-      - type: heading
-        heading: Chores
-        heading_style: title
-        icon: mdi:star-circle
-      - type: markdown
-        content: >-
-          Phase 4 fills this in: Aria's picture chore tiles, her star balance, and progress toward the next reward. Eden has no chores.
-  - type: grid
-    cards:
+      # Star tally. The number is the reward, so it is the biggest thing here.
+      - type: custom:button-card
+        entity: sensor.aria_choreops_stars
+        name: Aria's stars
+        icon: mdi:star
+        show_state: true
+        show_name: true
+        show_icon: true
+        tap_action:
+          action: none
+        styles:
+          card:
+            - height: 120px
+            - border-radius: 22px
+            - background: var(--family-aria)
+            - box-shadow: none
+          grid:
+            - grid-template-areas: '"i s" "i n"'
+            - grid-template-columns: 120px auto
+            - justify-items: start
+            - padding: 0 22px
+          icon:
+            - width: 72px
+            - color: "#FFFFFF"
+          state:
+            - font-size: 3.2rem
+            - font-weight: 800
+            - color: "#FFFFFF"
+            - line-height: 1
+          name:
+            - font-size: 0.95rem
+            - font-weight: 700
+            - letter-spacing: 0.12em
+            - text-transform: uppercase
+            - color: rgba(255,255,255,0.85)
+
+      # Progress to the next reward. A 4-year-old cannot read "7/10" but can
+      # see a bar that is nearly full.
+      - type: custom:bar-card
+        entities:
+          - entity: sensor.aria_choreops_stars
+            name: Ice cream at 10 stars
+        max: 10
+        min: 0
+        height: 44px
+        positions:
+          icon: 'off'
+          indicator: 'off'
+          minmax: 'off'
+          value: inside
+          name: inside
+        color: var(--family-shared)
+        card_mod:
+          style: |
+            ha-card { box-shadow: none; border: none; border-radius: 18px; }
+
+      # The board. Three columns so tiles stay large on a 10" screen.
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_get_dressed
+            name: Get dressed
+            icon: mdi:tshirt-crew
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_get_dressed
+            styles: &tile
+              card:
+                - height: 150px
+                - border-radius: 22px
+                - box-shadow: none
+                - background: "#FFFFFF"
+                - border: 3px solid var(--divider-color)
+              icon:
+                - width: 68px
+                - color: var(--family-aria)
+              name:
+                - font-size: 1.05rem
+                - font-weight: 700
+                - color: var(--primary-text-color)
+            state: &tilestate
+              - value: claimed
+                styles:
+                  card:
+                    - background: "#FFF4F8"
+                    - border: 3px dashed var(--family-aria)
+                    - opacity: "0.75"
+                  icon:
+                    - color: var(--family-aria)
+              - value: completed
+                styles:
+                  card:
+                    - background: "#E9F9F1"
+                    - border: 3px solid "#26C6A0"
+                  icon:
+                    - color: "#26C6A0"
+                  name:
+                    - color: "#1B7A5A"
+              - value: overdue
+                styles:
+                  card:
+                    - border: 3px solid "#F7B731"
+
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_brush_teeth
+            name: Brush teeth
+            icon: mdi:toothbrush
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_brush_teeth
+            styles: *tile
+            state: *tilestate
+
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_tidy_toys
+            name: Tidy toys
+            icon: mdi:teddy-bear
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_tidy_toys
+            styles: *tile
+            state: *tilestate
+
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_shoes_away
+            name: Shoes away
+            icon: mdi:shoe-sneaker
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_shoes_away
+            styles: *tile
+            state: *tilestate
+
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_set_the_table
+            name: Set the table
+            icon: mdi:silverware-fork-knife
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_set_the_table
+            styles: *tile
+            state: *tilestate
+
+          - type: custom:button-card
+            entity: sensor.aria_choreops_chore_status_teeth_at_night
+            name: Teeth at night
+            icon: mdi:weather-night
+            show_state: false
+            tap_action:
+              action: call-service
+              service: button.press
+              service_data:
+                entity_id: button.aria_choreops_claim_chore_teeth_at_night
+            styles: *tile
+            state: *tilestate
+
       - !include _navbar.yaml
