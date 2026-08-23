@@ -64,6 +64,10 @@ lovelace:
       type: module
     - url: /hacsfiles/PlexMeetsHomeAssistant/plex-meets-homeassistant.js
       type: module
+    - url: /hacsfiles/lovelace-navbar-card/navbar-card.js
+      type: module
+    - url: /hacsfiles/kiosk-mode/kiosk-mode.js
+      type: module
     # NOTE: the file is ha-sankey-chart.js, not sankey-chart.js. Because
     # lovelace is in yaml mode, HACS cannot register this itself.
     - url: /hacsfiles/ha-sankey-chart/ha-sankey-chart.js
