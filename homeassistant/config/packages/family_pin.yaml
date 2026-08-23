@@ -39,27 +39,32 @@ script:
         required: true
         selector: {text: null}
     sequence:
+      # Everything here is forced through | string on purpose. Home Assistant
+      # applies NATIVE TYPING to template results, so "{{ '3844' }}" comes back
+      # as the integer 3844 - and `3844 | length` is not 4, so the PIN was never
+      # compared and the keypad silently never unlocked. Same trap as the
+      # datetime in packages/family_calendar.yaml.
       - variables:
           expected: !secret family_pin
           current: >-
-            {%- set c = states('input_text.family_pin_entry') -%}
+            {%- set c = states('input_text.family_pin_entry') | string -%}
             {{ '' if c in ['unknown', 'unavailable', 'None'] else c }}
       - variables:
-          entered: "{{ (current ~ digit)[:4] }}"
+          entered: "{{ ((current | string) ~ (digit | string))[:4] }}"
 
       - action: input_text.set_value
         target:
           entity_id: input_text.family_pin_entry
         data:
-          value: "{{ entered }}"
+          value: "{{ entered | string }}"
 
       - if:
           - condition: template
-            value_template: "{{ entered | length >= 4 }}"
+            value_template: "{{ (entered | string) | length >= 4 }}"
         then:
           - if:
               - condition: template
-                value_template: "{{ entered == expected }}"
+                value_template: "{{ (entered | string) == (expected | string) }}"
             then:
               - action: input_boolean.turn_on
                 target:
