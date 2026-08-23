@@ -1,19 +1,181 @@
-# Calendar - week planner and the add-event composer. Filled in Phase 3.
+# Calendar - the week at a glance.
+#
+# Design intent: colour IS the identity. Every event carries a person prefix in
+# Outlook ("Aria: Swimming") because that is how the six filtered calendar
+# entities are derived - but the prefix is plumbing, not content. filterText
+# strips it from the display, so the board shows "Swimming" in Aria-pink.
+# Aria is 4 and cannot read; she finds her day by colour, not by words.
+#
+# legendToggle makes the legend the kid-facing control: tap pink, see only your
+# own events. It costs nothing and is the one interaction a 4-year-old can
+# discover unaided.
+#
+# type: panel rather than sections - this is a wall display, and panel gives
+# genuine full-bleed width. sections caps column width, which wastes a third of
+# a 10" screen mounted across a kitchen.
 title: Calendar
 path: calendar
 icon: mdi:calendar-month
-type: sections
-max_columns: 2
-sections:
-  - type: grid
+type: panel
+cards:
+  - type: vertical-stack
     cards:
-      - type: heading
-        heading: Calendar
-        heading_style: title
-        icon: mdi:calendar-month
-      - type: markdown
-        content: >-
-          Phase 3 fills this in: the week planner across the six filtered calendar entities, plus the add-event composer that prepends the person prefix automatically.
-  - type: grid
-    cards:
+      # Opener. Deliberately the only button on this view: the week grid is the
+      # content, and one unambiguous action beats a toolbar.
+      - type: custom:button-card
+        name: Add event
+        icon: mdi:calendar-plus
+        tap_action:
+          action: navigate
+          navigation_path: "#add-event"
+        styles:
+          card:
+            - height: 62px
+            - border-radius: 18px
+            - background: var(--family-shared)
+            - box-shadow: none
+          name:
+            - font-size: 1.15rem
+            - font-weight: 800
+            - letter-spacing: 0.02em
+            - color: "#1B2430"
+          icon:
+            - width: 30px
+            - color: "#1B2430"
+          grid:
+            - grid-template-areas: "\"i n\""
+            - grid-template-columns: 44px auto
+            - justify-items: start
+            - padding: 0 18px
+
+      - type: custom:week-planner-card
+        days: 7
+        startingDay: today
+        locale: en-AU
+        timeFormat: h:mma
+        # Weekday in small caps above a large numeral. dayFormat is injected as
+        # raw HTML by the card, so these classes are ours to style below.
+        dayFormat: "<span class='fam-dow'>cccc</span><span class='fam-num'>d</span>"
+        showLegend: true
+        legendToggle: true
+        hidePastEvents: false
+        hideDaysWithoutEvents: false
+        compact: false
+        eventBackground: "transparent"
+        weather:
+          entity: weather.forecast_home
+          showCondition: true
+          showTemperature: true
+          showLowTemperature: true
+        calendars:
+          # Order matters: shared first so whole-family events read as the
+          # backdrop the individual people sit against.
+          - entity: calendar.family_shared
+            name: Everyone
+            color: "#F7B731"
+            icon: mdi:home-heart
+          - entity: calendar.family_nick
+            name: Nick
+            color: "#2E86DE"
+            icon: mdi:account
+            filterText: "^Nick:\\s*"
+          - entity: calendar.family_elle
+            name: Elle
+            color: "#A55EEA"
+            icon: mdi:account
+            filterText: "^Elle:\\s*"
+          - entity: calendar.family_aria
+            name: Aria
+            color: "#FF6B9D"
+            icon: mdi:teddy-bear
+            filterText: "^Aria:\\s*"
+          - entity: calendar.family_eden
+            name: Eden
+            color: "#26C6A0"
+            icon: mdi:baby-face-outline
+            filterText: "^Eden:\\s*"
+        card_mod:
+          style: |
+            ha-card {
+              border: none;
+              box-shadow: none;
+              background: transparent;
+              padding: 4px 8px 0 8px;
+            }
+            /* Day header: quiet tracked weekday, loud numeral. The numeral is
+               the thing you find from across the room. */
+            .fam-dow {
+              display: block;
+              font-size: 0.72rem;
+              font-weight: 700;
+              letter-spacing: 0.14em;
+              text-transform: uppercase;
+              color: var(--secondary-text-color);
+              line-height: 1.4;
+            }
+            .fam-num {
+              display: block;
+              font-size: 2.1rem;
+              font-weight: 800;
+              line-height: 1;
+              color: var(--primary-text-color);
+            }
+            /* Events read as colour-blocked tiles, not list rows. */
+            .event {
+              border-radius: 12px !important;
+              padding: 7px 10px !important;
+              margin-bottom: 6px !important;
+              font-size: 1.05rem !important;
+              font-weight: 600 !important;
+            }
+            .time { font-weight: 700 !important; opacity: 0.75; }
+            /* Legend doubles as Aria's filter control, so make it tappable-big. */
+            .legend { gap: 14px !important; padding-top: 10px !important; }
+            .legend > div { font-size: 1rem !important; font-weight: 700 !important; }
+      # Composer. bubble-card renders this as a modal keyed off the #add-event
+      # hash, so the button above is a plain navigate - no custom JS, and the
+      # back gesture closes it, which is what a tablet user expects.
+      - type: vertical-stack
+        cards:
+          - type: custom:bubble-card
+            card_type: pop-up
+            hash: "#add-event"
+            name: New event
+            icon: mdi:calendar-plus
+          - type: entities
+            entities:
+              - entity: input_select.family_event_person
+                name: Who is it for
+              - entity: input_text.family_event_title
+                name: What is it
+              - entity: input_datetime.family_event_start
+                name: When
+              - entity: input_select.family_event_length
+                name: How long
+            card_mod:
+              style: |
+                ha-card { box-shadow: none; border: none; }
+                /* Wall-mounted: rows need to be thumb-sized, not mouse-sized. */
+                #states > * { --paper-item-body-two-line-min-height: 62px; }
+                .card-content { font-size: 1.1rem; font-weight: 600; }
+          - type: custom:button-card
+            name: Save to calendar
+            icon: mdi:check-bold
+            tap_action:
+              action: call-service
+              service: script.family_add_event
+            styles:
+              card:
+                - height: 68px
+                - border-radius: 18px
+                - background: var(--family-aria)
+                - box-shadow: none
+              name:
+                - font-size: 1.2rem
+                - font-weight: 800
+                - color: "#FFFFFF"
+              icon:
+                - width: 30px
+                - color: "#FFFFFF"
+
       - !include _navbar.yaml

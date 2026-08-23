@@ -1,0 +1,91 @@
+# Family calendar - the add-event composer.
+#
+# Everything on the shared Outlook calendar carries a person prefix
+# ("Aria: Swimming") because that is how the six filtered HA calendar entities
+# are derived. Nobody should ever have to TYPE that prefix - a person picker
+# prepends it here, so the convention survives contact with a tired adult at
+# 7am. It only matters when someone adds an event directly from Outlook, and
+# getting it wrong there is cosmetic: the event lands on "Everyone" instead of a
+# person, and renaming fixes it.
+#
+# Writes go to calendar.family_all because every filtered entity maps to the
+# same underlying Outlook calendar; "all" is the unfiltered one, so it is the
+# honest target.
+
+input_select:
+  family_event_person:
+    name: Event for
+    icon: mdi:account-multiple
+    options:
+      - Everyone
+      - Nick
+      - Elle
+      - Aria
+      - Eden
+
+  family_event_length:
+    name: How long
+    icon: mdi:timer-outline
+    # One control for duration AND all-day. Two controls would mean explaining
+    # to a user why "All day" makes "2 hours" meaningless.
+    options:
+      - 30 minutes
+      - 1 hour
+      - 2 hours
+      - All day
+
+input_text:
+  family_event_title:
+    name: What is it
+    icon: mdi:text-short
+    max: 100
+
+input_datetime:
+  family_event_start:
+    name: When
+    icon: mdi:calendar-clock
+    has_date: true
+    has_time: true
+
+script:
+  family_add_event:
+    alias: Add family event
+    icon: mdi:calendar-plus
+    mode: single
+    sequence:
+      - variables:
+          person: "{{ states('input_select.family_event_person') }}"
+          prefix: "{{ '' if person == 'Everyone' else person ~ ': ' }}"
+          title: "{{ states('input_text.family_event_title') | trim }}"
+          length: "{{ states('input_select.family_event_length') }}"
+          starts: "{{ states('input_datetime.family_event_start') | as_datetime }}"
+          all_day: "{{ states('input_select.family_event_length') == 'All day' }}"
+          mins: >-
+            {{ {'30 minutes': 30, '1 hour': 60, '2 hours': 120}.get(
+                 states('input_select.family_event_length'), 60) }}
+
+      # An empty title would create an untitled event on a calendar two adults
+      # rely on. Fail quietly rather than write rubbish.
+      - condition: template
+        value_template: "{{ title | length > 0 }}"
+
+      - action: ms365_calendar.create_calendar_event
+        target:
+          entity_id: calendar.family_all
+        data:
+          subject: "{{ prefix ~ title }}"
+          is_all_day: "{{ all_day }}"
+          start: >-
+            {{ starts.date().isoformat() if all_day else starts.isoformat() }}
+          end: >-
+            {{ (starts.date() + timedelta(days=1)).isoformat() if all_day
+               else (starts + timedelta(minutes=mins | int)).isoformat() }}
+
+      # Clear the title so the next person does not edit someone else's text.
+      # Person and length deliberately persist - the same people book the same
+      # kinds of thing repeatedly.
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.family_event_title
+        data:
+          value: ""

@@ -68,6 +68,14 @@ lovelace:
       type: module
     - url: /hacsfiles/kiosk-mode/kiosk-mode.js
       type: module
+    - url: /hacsfiles/week-planner-card/week-planner-card.js
+      type: module
+    - url: /hacsfiles/button-card/button-card.js
+      type: module
+    # NOTE: the HACS directory is Bubble-Card (capitalised), but the file inside
+    # it is lowercase bubble-card.js. Same class of trap as ha-sankey-chart.
+    - url: /hacsfiles/Bubble-Card/bubble-card.js
+      type: module
     # NOTE: the file is ha-sankey-chart.js, not sankey-chart.js. Because
     # lovelace is in yaml mode, HACS cannot register this itself.
     - url: /hacsfiles/ha-sankey-chart/ha-sankey-chart.js
