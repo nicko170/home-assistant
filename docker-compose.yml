@@ -40,6 +40,32 @@ services:
     network_mode: host
 
   # ============================================================================
+  # MEALIE (recipe manager + weekly meal plan)
+  # ============================================================================
+  # Access: http://<host-ip>:9925
+  #
+  # Unlike the rest of this stack Mealie uses bridge networking with an explicit
+  # port map, not network_mode: host. It needs no mDNS/SSDP discovery, and
+  # Mealie's listen port is fixed at 9000 with no env var to change it - so a
+  # port map is how we avoid colliding with anything else that wants 9000.
+  mealie:
+    container_name: mealie
+    image: ghcr.io/mealie-recipes/mealie:v3.23.1
+    ports:
+      - "9925:9000"
+    volumes:
+      - ./mealie:/app/data
+    environment:
+      - TZ=Australia/Sydney
+      - ALLOW_SIGNUP=false
+      - BASE_URL=http://192.168.15.4:9925
+    deploy:
+      resources:
+        limits:
+          memory: 1000M
+    restart: unless-stopped
+
+  # ============================================================================
   # SCRYPTED
   # ============================================================================
   # Access: https://<host-ip>:10443 (self-signed cert)
