@@ -27,11 +27,15 @@ homeassistant/config/deps/
 homeassistant/config/tts/
 
 # ---- MS365 integration runtime ----
-# Holds a live OAuth token cache (a credential) AND a calendars yaml that the
-# integration rewrites itself. Tracking either would break deploy.sh: a file HA
-# edits leaves the deploy tree dirty and `git merge --ff-only` then fails.
-# A reference copy of the filter config lives in docs/reference/.
-homeassistant/config/ms365_storage/
+# The token cache is a live OAuth refresh token - never commit it.
+#
+# ms365_calendars_family.yaml IS tracked: it holds the per-person subject
+# filters, which are configuration. Verified against the integration source
+# (integration/filemgmt_integration.py) that it is only written when a calendar
+# is ADDED (append-only, and skipped if the cal_id already exists) or REMOVED in
+# Outlook - never on restart. So it does not churn and will not leave the deploy
+# tree dirty.
+homeassistant/config/ms365_storage/.MS365-token-cache/
 
 # ---- third-party, package-managed ----
 # HACS-installed integrations and frontend cards
