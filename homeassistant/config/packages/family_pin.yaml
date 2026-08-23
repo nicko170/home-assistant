@@ -31,7 +31,12 @@ script:
   family_pin_digit:
     alias: PIN keypad digit
     icon: mdi:dialpad
-    mode: single
+    # queued, NOT single. With mode: single an overlapping press is DROPPED
+    # silently - verified by pressing four digits and finding three. On a wall
+    # keypad, where a 4-year-old mashes buttons faster than the script runs,
+    # that loses digits and the PIN never matches. Queue them instead.
+    mode: queued
+    max: 12
     fields:
       digit:
         description: The digit pressed
