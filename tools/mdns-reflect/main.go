@@ -44,6 +44,7 @@ func main() {
 		names    = flag.String("groups", "mdns,ssdp", "comma-separated multicast groups to reflect")
 		verbose  = flag.Bool("v", false, "log every forwarded packet")
 		statsInt = flag.Duration("stats", 15*time.Minute, "how often to log counters (0 disables)")
+		vmUni    = flag.String("vm-unicast", "", "comma-separated VM-side addresses to also receive a unicast copy (e.g. the HA container IP)")
 	)
 	flag.Parse()
 
@@ -53,13 +54,13 @@ func main() {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 
-	if err := run(log, *lanName, *vmName, *names, *statsInt); err != nil {
+	if err := run(log, *lanName, *vmName, *names, *vmUni, *statsInt); err != nil {
 		log.Error("fatal", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(log *slog.Logger, lanName, vmName, names string, statsInt time.Duration) error {
+func run(log *slog.Logger, lanName, vmName, names, vmUni string, statsInt time.Duration) error {
 	lan, err := net.InterfaceByName(lanName)
 	if err != nil {
 		return fmt.Errorf("lan interface %q: %w", lanName, err)
@@ -77,6 +78,14 @@ func run(log *slog.Logger, lanName, vmName, names string, statsInt time.Duration
 		return err
 	}
 
+	unicast, err := parseIPs(vmUni)
+	if err != nil {
+		return err
+	}
+	if len(unicast) > 0 {
+		log.Info("also delivering unicast copies", "to", vmUni)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -91,7 +100,7 @@ func run(log *slog.Logger, lanName, vmName, names string, statsInt time.Duration
 	// IP and fixed by the static route, not by this process.
 	started := 0
 	for _, g := range selected {
-		r, err := newReflector(g, lan, vm, log, st)
+		r, err := newReflector(g, lan, vm, unicast, log, st)
 		if err != nil {
 			log.Warn("group unavailable, continuing without it",
 				"group", g.name, "port", g.port, "err", err)
@@ -151,6 +160,25 @@ func parseGroups(names string) ([]group, error) {
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("no groups selected")
+	}
+	return out, nil
+}
+
+// parseIPs parses the -vm-unicast list. These are the VM-side listeners that
+// bind a unicast address rather than the wildcard, and so never see reflected
+// multicast.
+func parseIPs(s string) ([]net.IP, error) {
+	var out []net.IP
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		ip := net.ParseIP(part)
+		if ip == nil || ip.To4() == nil {
+			return nil, fmt.Errorf("invalid IPv4 address %q in -vm-unicast", part)
+		}
+		out = append(out, ip)
 	}
 	return out, nil
 }

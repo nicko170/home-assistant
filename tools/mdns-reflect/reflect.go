@@ -92,6 +92,15 @@ type reflector struct {
 	stats    *stats
 	log      *slog.Logger
 	wildcard bool // false = multicast-only visibility, see bindReceive
+
+	// Extra unicast destinations on the VM side. Home Assistant's zeroconf
+	// binds its interface address (192.168.139.2:5353), not the wildcard, and
+	// a unicast-bound socket receives NO multicast - measured, 0 packets over
+	// 8s. So re-multicasting onto bridge100 is not enough to reach it; it
+	// needs a unicast copy addressed to it directly. mDNS accepts unicast
+	// delivery (that is what the QU bit is for), so this is a legitimate
+	// transport, not a trick.
+	vmUnicast []net.IP
 }
 
 func reusePorts(_, _ string, c syscall.RawConn) error {
@@ -156,7 +165,7 @@ func listenSend(ifi *net.Interface, g group) (*ipv4.PacketConn, error) {
 	return conn, nil
 }
 
-func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) (*reflector, error) {
+func newReflector(g group, lan, vm *net.Interface, vmUnicast []net.IP, log *slog.Logger, st *stats) (*reflector, error) {
 	pc, wildcard, err := listenGroup(g)
 	if err != nil {
 		return nil, fmt.Errorf("listen %s/%d: %w", g.name, g.port, err)
@@ -205,7 +214,7 @@ func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) 
 	}
 
 	return &reflector{
-		g: g, rx: rx, tx: tx, lan: lan, vm: vm, wildcard: wildcard,
+		g: g, rx: rx, tx: tx, lan: lan, vm: vm, wildcard: wildcard, vmUnicast: vmUnicast,
 		dedupe: newDedupe(dedupeWindow), local: local, stats: st, log: log,
 	}, nil
 }
@@ -253,6 +262,18 @@ func (r *reflector) run(ctx context.Context) error {
 		if !ok {
 			continue
 		}
+		// Unicast copies first: these are what HA actually receives. Done
+		// before the multicast write so a multicast failure cannot skip them.
+		if egress == r.vm.Index {
+			for _, ip := range r.vmUnicast {
+				u := &net.UDPAddr{IP: ip, Port: r.g.port}
+				if _, err := out.WriteTo(buf[:n], nil, u); err != nil {
+					r.log.Warn("unicast forward failed",
+						"group", r.g.name, "to", ip.String(), "err", err)
+				}
+			}
+		}
+
 		if _, err := out.WriteTo(buf[:n], nil, dst); err != nil {
 			// A single write failure is not fatal - the interface may be
 			// mid-reconfigure. Log and keep serving the other direction.

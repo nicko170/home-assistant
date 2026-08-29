@@ -65,6 +65,23 @@ Binding an interface's unicast address is not an alternative for receiving:
 it binds and joins without error and then receives nothing. Measured at 0
 packets over 8s on a busy segment.
 
+## Why `-vm-unicast` is not optional here
+
+Reflected multicast reaches the container's network stack but **not Home
+Assistant**, because HA's zeroconf binds `192.168.139.2:5353` - its interface
+address - rather than the wildcard. By the same measurement above, such a
+socket receives no multicast whatsoever.
+
+So each packet forwarded toward the VM is also sent as a unicast copy directly
+to HA's address. mDNS accepts unicast delivery by design (that is what the QU
+bit is for), so this is a supported transport rather than a trick.
+
+Without it every layer looks healthy - both groups bound, packets forwarded,
+multicast arriving in the container - and HA still discovers nothing. That was
+the last blocker, and it is invisible unless you check what HA itself is bound
+to. If the container's address changes, update the flag in
+`deploy/net.npratley.mdns-reflect.plist`.
+
 ## Run
 
 ```

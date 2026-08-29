@@ -9,6 +9,10 @@
         <string>-lan</string><string>en0</string>
         <string>-vm</string><string>bridge100</string>
         <string>-groups</string><string>mdns,ssdp</string>
+        <!-- Home Assistant's zeroconf binds 192.168.139.2:5353 rather than the
+             wildcard, and a unicast-bound socket receives no multicast at all.
+             Without this copy HA sees nothing, however well reflection works. -->
+        <string>-vm-unicast</string><string>192.168.139.2</string>
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
