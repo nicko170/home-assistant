@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Enable IPv4 forwarding so the mac mini routes between the house LAN and the
+  OrbStack container subnet.
+
+  WHY: Home Assistant runs at 192.168.139.2, inside OrbStack's Linux VM. The
+  Juniper has a static route 192.168.138.0/23 -> 192.168.15.4, but a route is
+  only half of it: without forwarding, this host silently drops packets that
+  are addressed to the container rather than to itself.
+
+  WHAT IT FIXES: every integration where the DEVICE connects back to HA.
+  Sonos, Reolink and SamsungTV all subscribe by handing HA its own address;
+  HA advertises 192.168.139.2, and until this was in place the LAN had no way
+  to reach it. Symptom was "Subscription to <ip> failed, attempting to poll
+  directly" and players stuck unavailable. It also completes mDNS discovery,
+  since responses are frequently unicast back to the querier.
+
+  Installed as a LaunchDaemon, not a LaunchAgent: this must apply at boot
+  regardless of login. /etc/sysctl.conf is not reliably honoured on current
+  macOS, hence a job rather than a config file.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>net.npratley.ip-forward</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/sbin/sysctl</string>
+        <string>-w</string>
+        <string>net.inet.ip.forwarding=1</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><false/>
+    <key>StandardOutPath</key><string>/var/log/net.npratley.ip-forward.log</string>
+    <key>StandardErrorPath</key><string>/var/log/net.npratley.ip-forward.log</string>
+</dict>
+</plist>
