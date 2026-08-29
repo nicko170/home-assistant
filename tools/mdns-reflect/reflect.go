@@ -228,22 +228,59 @@ func (r *reflector) run(ctx context.Context) error {
 		}
 	}()
 
+	errs := make(chan error, 3)
+
+	// The per-interface sockets are not write-only. When we re-originate a
+	// query onto the LAN it leaves from 192.168.15.4:5353, so responders send
+	// their UNICAST replies back to that address - and that socket is a MORE
+	// SPECIFIC bind than the wildcard receive socket, so BSD delivers the
+	// replies to it rather than to rx. Treating these as send-only meant every
+	// query was reflected and every answer was dropped on the floor: the
+	// container saw a healthy stream of packets, all of them queries, and
+	// resolved nothing.
+	for idx, conn := range r.tx {
+		go func(ingress int, c *ipv4.PacketConn) {
+			errs <- r.pump(ctx, c, ingress)
+		}(idx, conn)
+	}
+
+	// Multicast arrives on the group/wildcard socket, which carries the
+	// ingress interface in its control message.
+	go func() { errs <- r.pump(ctx, r.rx, 0) }()
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-errs:
+		return err
+	}
+}
+
+// pump forwards everything arriving on one socket to the opposite interface.
+// ingress is 0 for the shared receive socket, where the interface comes from
+// the control message instead.
+func (r *reflector) pump(ctx context.Context, conn *ipv4.PacketConn, ingress int) error {
 	dst := &net.UDPAddr{IP: r.g.ip, Port: r.g.port}
 	buf := make([]byte, 9000) // jumbo-safe; mDNS and SSDP are far smaller
 
 	for {
-		n, cm, src, err := r.rx.ReadFrom(buf)
+		n, cm, src, err := conn.ReadFrom(buf)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil // clean shutdown
 			}
 			return fmt.Errorf("read %s: %w", r.g.name, err)
 		}
-		if cm == nil {
-			continue
+
+		in := ingress
+		if in == 0 {
+			if cm == nil {
+				continue
+			}
+			in = cm.IfIndex
 		}
 
-		egress, ok := peer(cm.IfIndex, r.lan.Index, r.vm.Index)
+		egress, ok := peer(in, r.lan.Index, r.vm.Index)
 		if !ok {
 			continue // arrived on an interface we do not bridge
 		}
@@ -281,6 +318,7 @@ func (r *reflector) run(ctx context.Context) error {
 			continue
 		}
 		r.stats.forwarded.Add(1)
-		r.log.Debug("forwarded", "group", r.g.name, "src", src.String(), "bytes", n, "egress", egress)
+		r.log.Debug("forwarded", "group", r.g.name, "src", src.String(),
+			"bytes", n, "in", in, "egress", egress)
 	}
 }
