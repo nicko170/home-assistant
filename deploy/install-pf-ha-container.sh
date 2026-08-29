@@ -4,10 +4,10 @@
 # Run on the mini as root:
 #     sudo ./deploy/install-pf-ha-container.sh
 #
-# Diagnoses first, installs, then proves the container did not lose LAN access.
-# Safe to re-run. See deploy/pf-ha-container.conf for why this is needed.
+# Safe to re-run: it strips its own previous edits before re-applying, so a
+# failed run does not compound. See deploy/pf-ha-container.conf for the why.
 #
-# ROLLBACK, if anything goes sideways:
+# ROLLBACK:
 #     sudo pfctl -a ha-container -F all      # drop just these rules
 #     sudo cp /etc/pf.conf.bak.<timestamp> /etc/pf.conf && sudo pfctl -f /etc/pf.conf
 
@@ -32,31 +32,83 @@ mkdir -p /etc/pf.anchors
 install -m 0644 -o root -g wheel "$REPO_DIR/deploy/pf-ha-container.conf" "$CONF"
 print "installed $CONF"
 
-# Wire the anchor into pf.conf, once. macOS rewrites pf.conf on some system
-# updates, so this is written to be idempotent and re-runnable rather than a
-# one-time hand edit. nat-anchor must precede the filter anchor: pf.conf is
-# order-sensitive and a filter anchor first is silently ineffective for NAT.
-if grep -q "anchor \"$ANCHOR\"" "$PFCONF"; then
-  print "anchor already present in $PFCONF"
-else
-  cp "$PFCONF" "$PFCONF.bak.$(date +%Y%m%d-%H%M%S)"
-  printf '\nnat-anchor "%s"\nanchor "%s"\nload anchor %s from "%s"\n' \
-    "$ANCHOR" "$ANCHOR" "$ANCHOR" "$CONF" >> "$PFCONF"
-  print "added anchor to $PFCONF (backup taken)"
-fi
+cp "$PFCONF" "$PFCONF.bak.$(date +%Y%m%d-%H%M%S)"
 
-# -E enables pf and takes a reference count; harmless if already enabled.
+# pf.conf is strictly ordered: options, normalization, queueing, TRANSLATION,
+# then FILTERING. Appending a nat-anchor at the end of a file that already has
+# Apple's filter anchors is a syntax error, not a warning - pf refuses the
+# whole ruleset. So each anchor has to be spliced into its own section rather
+# than tacked on the end.
+ANCHOR="$ANCHOR" PFCONF="$PFCONF" CONF="$CONF" python3 <<'PYEOF'
+import os, re
+
+anchor = os.environ["ANCHOR"]
+pfconf = os.environ["PFCONF"]
+conf = os.environ["CONF"]
+
+lines = open(pfconf).read().splitlines()
+
+# Strip any previous attempt so re-runs are idempotent rather than cumulative.
+# A failed run leaves its lines behind; without this they compound.
+lines = [l for l in lines if anchor not in l]
+
+nat_line = 'nat-anchor "%s"' % anchor
+flt_line = 'anchor "%s"' % anchor
+load_line = 'load anchor "%s" from "%s"' % (anchor, conf)
+
+def first_filter(ls):
+    return next((n for n, l in enumerate(ls)
+                 if re.match(r'anchor\b', l.strip())), len(ls))
+
+def last_filter(ls):
+    hits = [n for n, l in enumerate(ls) if re.match(r'anchor\b', l.strip())]
+    return hits[-1] if hits else None
+
+# pf.conf is strictly ordered and translation must precede filtering. Appending
+# a nat-anchor at the end of a file that already has Apple's filter anchors is
+# what broke the first attempt - pf rejects the whole ruleset, it does not warn.
+#
+# Insert immediately BEFORE the first filter anchor. That is the one position
+# guaranteed to be after every earlier section without having to model what
+# those sections are; anchoring off the last nat/rdr line instead is fragile,
+# because Apple's own file puts dummynet-anchor after them.
+lines.insert(first_filter(lines), nat_line)
+
+j = last_filter(lines)
+lines.insert((j + 1) if j is not None else len(lines), flt_line)
+
+# load is not part of the ordered rule sections and may sit at the end.
+lines.append(load_line)
+
+open(pfconf, "w").write("\n".join(lines) + "\n")
+print("  spliced nat-anchor, anchor and load into %s" % pfconf)
+PYEOF
+
+# Validate BEFORE applying. -n parses without loading, so an ordering mistake
+# is caught here rather than taking the live ruleset down - which is exactly
+# what the first attempt did.
+#
+# The ALTQ and "-f option" lines are unconditional macOS noise, not errors, so
+# they are filtered out of the report while the exit status is judged on its
+# own.
+if ! pf_err=$(pfctl -n -f "$PFCONF" 2>&1); then
+  print -u2 "pf.conf does not parse - restoring the backup and aborting:"
+  print -u2 -- "${pf_err}" | grep -vE "ALTQ|Use of -f option|could result in flushing|See /etc/pf.conf" >&2 || true
+  cp "$(ls -t $PFCONF.bak.* | head -1)" "$PFCONF"
+  exit 1
+fi
+print "pf.conf parses cleanly"
+
 pfctl -E 2>/dev/null || true
-pfctl -f "$PFCONF"
+pfctl -f "$PFCONF" 2>&1 | grep -vE "ALTQ|Use of -f option|could result in flushing|See /etc/pf.conf" || true
 print "pf reloaded"
 
 print "=== anchor rules now loaded ==="
 pfctl -a "$ANCHOR" -s nat 2>/dev/null || true
 pfctl -a "$ANCHOR" -s rules 2>/dev/null || true
 
-# The failure mode that matters: these rules must not cost the container its
-# own outbound access. That regression is worse than the bug being fixed, so
-# check it explicitly and self-revert rather than leaving a broken host.
+# The regression that would matter most: these rules must not cost the
+# container its own outbound access. Check explicitly and self-revert.
 print "=== verify: container must still reach the LAN ==="
 if ! "$DOCKER" exec homeassistant python3 -c '
 import socket
@@ -78,6 +130,3 @@ fi
 print
 print "Installed. Now test from a LAN host that is NOT the mini:"
 print "    nc -z 192.168.139.2 8123 && echo reachable"
-print
-print "Then watch for the Sonos subscription warning to stop:"
-print "    docker logs -f homeassistant 2>&1 | grep -i sonos"
