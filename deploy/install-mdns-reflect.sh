@@ -31,11 +31,17 @@ cp "$REPO_DIR/deploy/$PLIST_NAME.plist" "$PLIST"
 launchctl bootout "gui/$(id -u)/$PLIST_NAME" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
-sleep 2
-if launchctl list | grep -q "$PLIST_NAME"; then
-  print "running:"
-  launchctl list | grep "$PLIST_NAME"
-else
-  print -u2 "FAILED to start; check /Users/nickp/ha-deploy/mdns-reflect.err.log"
-  exit 1
-fi
+# bootstrap returns before launchd has necessarily registered the job, so poll
+# rather than sleeping once - a single short sleep reports a false failure on a
+# service that started fine.
+for _ in {1..10}; do
+  if launchctl list | grep -q "$PLIST_NAME"; then
+    print "running:"
+    launchctl list | grep "$PLIST_NAME"
+    exit 0
+  fi
+  sleep 1
+done
+
+print -u2 "FAILED to start; check /Users/nickp/ha-deploy/mdns-reflect.err.log"
+exit 1

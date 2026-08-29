@@ -1,0 +1,259 @@
+# Media - what is playing, and how to change it.
+#
+# The players here span four integrations that behave nothing alike, which is
+# why this is not one uniform grid:
+#
+#   media_player.lounge_room           apple_tv   Apple TV 4K gen 3, "Lounge"
+#   media_player.65_the_frame_...      samsungtv  The Frame (source switching)
+#   media_player.play_room             sonos      Sonos One, the only speaker
+#   media_player.ultra_slim_soundbar   cast       Samsung S801D soundbar
+#   media_player.plex_plex_for_...     plex       a Plex CLIENT, not the server
+#
+# The Plex entity is a client session: it exists only while something is
+# actually playing Plex on the Apple TV, and reads `unavailable` the rest of
+# the time. That is normal - do not "fix" it. The Plex media browser below is
+# the thing you push content FROM.
+#
+# HISTORY: until 2026-08-29 the Sonos and the soundbar both read `unavailable`
+# permanently, and it looked like broken devices. It was not - HA runs in an
+# OrbStack container that is not on the LAN, so multicast discovery never
+# reached it and UPnP event callbacks could not route back. Fixed by
+# tools/mdns-reflect plus a static route. If speakers go `unavailable`
+# wholesale again, suspect that path before the hardware.
+
+views:
+  # =================================================================
+  - title: Now playing
+    path: now
+    type: sections
+    max_columns: 2
+    icon: mdi:play-circle
+
+    badges:
+      - type: entity
+        entity: media_player.lounge_room
+        name: Lounge
+      - type: entity
+        entity: media_player.play_room
+        name: Sonos
+      - type: entity
+        entity: media_player.ultra_slim_soundbar
+        name: Soundbar
+
+    sections:
+      # ---------------- active players ----------------
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Playing now
+            heading_style: title
+            icon: mdi:motion-play
+
+          # Each player is conditional on actually doing something, so this
+          # section is empty on a quiet house rather than a wall of "Idle".
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: media_player.lounge_room
+                state_not: "off"
+              - condition: state
+                entity: media_player.lounge_room
+                state_not: unavailable
+              - condition: state
+                entity: media_player.lounge_room
+                state_not: standby
+            card:
+              type: custom:mushroom-media-player-card
+              entity: media_player.lounge_room
+              name: Lounge TV
+              icon: mdi:apple
+              use_media_info: true
+              use_media_artwork: false
+              show_volume_level: true
+              media_controls: [play_pause_stop, previous, next]
+              volume_controls: [volume_buttons, volume_set]
+              fill_container: true
+
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: media_player.play_room
+                state: playing
+            card:
+              type: custom:mushroom-media-player-card
+              entity: media_player.play_room
+              name: Play Room
+              icon: mdi:speaker-wireless
+              use_media_info: true
+              use_media_artwork: true
+              show_volume_level: true
+              media_controls: [play_pause_stop, previous, next]
+              volume_controls: [volume_buttons, volume_set]
+              fill_container: true
+
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: media_player.ultra_slim_soundbar
+                state: playing
+            card:
+              type: custom:mushroom-media-player-card
+              entity: media_player.ultra_slim_soundbar
+              name: Soundbar
+              icon: mdi:soundbar
+              use_media_info: true
+              use_media_artwork: true
+              show_volume_level: true
+              media_controls: [play_pause_stop, previous, next]
+              volume_controls: [volume_buttons, volume_set]
+              fill_container: true
+
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: media_player.plex_plex_for_apple_tv_apple_tv
+                state: playing
+            card:
+              type: custom:mushroom-media-player-card
+              entity: media_player.plex_plex_for_apple_tv_apple_tv
+              name: Plex
+              icon: mdi:plex
+              use_media_info: true
+              use_media_artwork: true
+              media_controls: [play_pause_stop]
+              fill_container: true
+
+          # The "nothing is on" case. Conditions are inverted copies of the
+          # four above; if a player is added, it must be added here too or the
+          # placeholder will lie.
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: media_player.play_room
+                state_not: playing
+              - condition: state
+                entity: media_player.ultra_slim_soundbar
+                state_not: playing
+              - condition: state
+                entity: media_player.plex_plex_for_apple_tv_apple_tv
+                state_not: playing
+              - condition: state
+                entity: media_player.lounge_room
+                state: "off"
+            card:
+              type: markdown
+              content: >-
+                Nothing is playing. Pick a room below.
+
+      # ---------------- every player ----------------
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Screens
+            heading_style: title
+            icon: mdi:television
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.lounge_room
+            name: Lounge Apple TV
+            icon: mdi:apple
+            use_media_info: true
+            media_controls: [play_pause_stop, previous, next]
+            volume_controls: [volume_buttons]
+            tap_action: {action: more-info}
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.65_the_frame_qa65ls03dawxxy
+            name: The Frame
+            icon: mdi:television-ambient-light
+            use_media_info: true
+            media_controls: [play_pause_stop]
+            volume_controls: [volume_buttons]
+            tap_action: {action: more-info}
+
+          # Source switching for the Frame. source_list is only ['TV','HDMI'],
+          # so this is two buttons rather than a dropdown.
+          - type: entities
+            title: Frame source
+            entities:
+              - type: custom:template-entity-row
+                entity: media_player.65_the_frame_qa65ls03dawxxy
+                name: Current source
+                state: "{{ state_attr('media_player.65_the_frame_qa65ls03dawxxy','source') or 'unknown' }}"
+                icon: mdi:video-input-hdmi
+
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Speakers
+            heading_style: title
+            icon: mdi:speaker-multiple
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.play_room
+            name: Play Room (Sonos)
+            icon: mdi:speaker-wireless
+            use_media_info: true
+            show_volume_level: true
+            media_controls: [play_pause_stop, previous, next]
+            volume_controls: [volume_buttons, volume_set]
+            tap_action: {action: more-info}
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.ultra_slim_soundbar
+            name: Ultra Slim Soundbar
+            icon: mdi:soundbar
+            use_media_info: true
+            show_volume_level: true
+            media_controls: [play_pause_stop, previous, next]
+            volume_controls: [volume_buttons, volume_set]
+            tap_action: {action: more-info}
+
+          - type: markdown
+            content: >-
+              **One Sonos.** "Play Room" is the only Sonos on the network.
+              Grouping controls appear here if more are added.
+
+  # =================================================================
+  - title: Plex
+    path: plex
+    icon: mdi:plex
+    cards:
+      - type: custom:plex-meets-homeassistant
+        libraryName: Movies
+        # Push to the Apple TV. The Plex client entity only exists while
+        # something is playing, so the cast target is the Apple TV itself.
+        entity:
+          - media_player.lounge_room
+        protocol: http
+        port: 32400
+        maxCount: 12
+        runBefore: ""
+        runAfter: ""
+
+  # =================================================================
+  - title: Remotes
+    path: remotes
+    type: sections
+    max_columns: 2
+    icon: mdi:remote
+
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Power
+            heading_style: title
+            icon: mdi:power
+
+          # The existing "Turn TV on with Apple TV" automation keys off
+          # remote.lounge_room turning on. These are the manual equivalents.
+          - type: entities
+            entities:
+              - entity: remote.lounge_room
+                name: Lounge Apple TV
+              - entity: remote.65_the_frame_qa65ls03dawxxy
+                name: The Frame

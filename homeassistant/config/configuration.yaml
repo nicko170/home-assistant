@@ -102,6 +102,13 @@ lovelace:
       icon: mdi:account-group
       show_in_sidebar: true
       require_admin: false
+    home-media:
+      mode: yaml
+      filename: dashboards/media.yaml
+      title: Media
+      icon: mdi:play-circle
+      show_in_sidebar: true
+      require_admin: false
     home-admin:
       mode: yaml
       filename: dashboards/admin.yaml

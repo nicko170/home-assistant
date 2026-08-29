@@ -57,10 +57,13 @@ cards:
                   icon:
                     - color: "var(--family-shared, #F7B731)"
 
+          # media_player.lounge_room is the Apple TV, not a speaker. It was
+          # labelled "Lounge music" with a speaker icon, which sent anyone
+          # looking for the Sonos to the wrong tile.
           - type: custom:button-card
             entity: media_player.lounge_room
-            name: Lounge music
-            icon: mdi:speaker
+            name: Lounge TV
+            icon: mdi:apple
             tap_action: {action: more-info}
             styles: *tile
             state: *tilestate

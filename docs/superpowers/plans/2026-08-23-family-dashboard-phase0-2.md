@@ -25,9 +25,13 @@
 - **Notify targets:** Nick is `notify.mobile_app_nicks_iphone`; Elle's companion device is named just `iPhone`, so hers is `notify.mobile_app_iphone`.
 - **Mac mini access:** `ssh 192.168.15.4`. Docker is not on the non-interactive PATH — prefix commands with `export PATH="$HOME/.orbstack/bin:$PATH"`.
 
-## Known Pre-Existing Issue (not in scope)
+## Known Pre-Existing Issue (RESOLVED 2026-08-29 — no longer applies)
 
-`check_config` reports the automation `Turn TV on with Apple TV` fails with `Unknown device '63da27bb84d9fa488f224cff0ec53b7a'`. This is pre-existing, unrelated to this work, and appears in every validation run. Do not treat it as a regression; do not fix it as part of these tasks.
+~~`check_config` reports the automation `Turn TV on with Apple TV` fails with `Unknown device '63da27bb84d9fa488f224cff0ec53b7a'`. This is pre-existing, unrelated to this work, and appears in every validation run. Do not treat it as a regression; do not fix it as part of these tasks.~~
+
+This is no longer true and the instruction above should not be followed. Verified 2026-08-29: `check_config` exits clean with **no errors at all**. Device `63da27bb84d9fa488f224cff0ec53b7a` (Apple TV 4K gen 3, "Lounge Room") and `5fd349f126883857d0184725988969f1` (The Frame) both resolve in the device registry, as do both referenced entity registry IDs. The automation is valid.
+
+Kept rather than deleted because the original note told future readers to ignore a validation error, and that instruction outlived the error — worth knowing it was retired deliberately.
 
 ## File Structure
 
