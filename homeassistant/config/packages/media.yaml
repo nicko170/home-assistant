@@ -1,0 +1,24 @@
+# Media - device configuration that cannot rely on discovery.
+#
+# WHY THIS EXISTS
+# HA runs in an OrbStack container that is not on the house LAN (it sits on
+# 192.168.138.0/23 behind the VM's NAT). Unicast works in both directions now
+# - see deploy/README.md for the route, IP forwarding and pf pieces - but
+# multicast discovery still does not reach the container:
+#
+#   SSDP  OrbStack holds a wildcard *:1900 without SO_REUSEPORT, so
+#         tools/mdns-reflect cannot bind it. Sonos discovery rides on SSDP.
+#   mDNS  reflected by tools/mdns-reflect, but not reliably picked up by the
+#         container's zeroconf stack.
+#
+# So the speakers are declared by IP instead. This is a supported path, not a
+# hack: the Sonos integration takes an explicit host list precisely for
+# networks where SSDP does not propagate.
+#
+# IF A SPEAKER MOVES, this file is the reason it goes unavailable. The
+# addresses below should be DHCP reservations on the Juniper.
+sonos:
+  media_player:
+    hosts:
+      # Sonos One, "Play Room". The only Sonos on the network.
+      - 192.168.15.82
