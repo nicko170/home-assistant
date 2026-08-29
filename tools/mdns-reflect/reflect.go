@@ -59,6 +59,23 @@ func localAddrs(ifaces ...*net.Interface) (map[string]bool, error) {
 	return out, nil
 }
 
+// ipv4Addr returns an interface's first IPv4 address. Reflected packets are
+// sent from this, so it must be a real unicast address.
+func ipv4Addr(ifi *net.Interface) (net.IP, error) {
+	addrs, err := ifi.Addrs()
+	if err != nil {
+		return nil, fmt.Errorf("addrs for %s: %w", ifi.Name, err)
+	}
+	for _, a := range addrs {
+		if ipn, ok := a.(*net.IPNet); ok {
+			if v4 := ipn.IP.To4(); v4 != nil {
+				return v4, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("%s has no IPv4 address", ifi.Name)
+}
+
 type stats struct {
 	forwarded atomic.Uint64
 	suppress  atomic.Uint64
@@ -67,7 +84,8 @@ type stats struct {
 
 type reflector struct {
 	g       group
-	conn    *ipv4.PacketConn
+	rx      *ipv4.PacketConn
+	tx      map[int]*ipv4.PacketConn // egress interface index -> send socket
 	lan, vm *net.Interface
 	dedupe  *dedupe
 	local   map[string]bool
@@ -75,79 +93,118 @@ type reflector struct {
 	log     *slog.Logger
 }
 
-// listen binds the multicast group with SO_REUSEADDR|SO_REUSEPORT.
-//
-// Two details are load-bearing on macOS. First, both socket options are
-// required: mDNSResponder already holds 5353 and OrbStack holds 1900, and
-// without them the bind fails outright rather than sharing.
-//
-// Second, we bind the GROUP address rather than the wildcard. SO_REUSEPORT
-// only lets sockets share a port when every holder set it, and OrbStack's
-// wildcard *:1900 does not - so a wildcard bind loses the race and returns
-// EADDRINUSE. Binding 239.255.255.250:1900 is a different, narrower address,
-// which BSD permits alongside the existing wildcard and which delivers
-// exactly the group traffic we want.
-func listen(g group) (net.PacketConn, error) {
-	lc := net.ListenConfig{
-		Control: func(_, _ string, c syscall.RawConn) error {
-			var serr error
-			err := c.Control(func(fd uintptr) {
-				if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-					serr = err
-					return
-				}
-				serr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
-			})
-			if err != nil {
-				return err
-			}
-			return serr
-		},
+func reusePorts(_, _ string, c syscall.RawConn) error {
+	var serr error
+	err := c.Control(func(fd uintptr) {
+		if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+			serr = err
+			return
+		}
+		serr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+	})
+	if err != nil {
+		return err
 	}
-	return lc.ListenPacket(context.Background(), "udp4", net.JoinHostPort(g.ip.String(), strconv.Itoa(g.port)))
+	return serr
 }
 
-func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) (*reflector, error) {
-	pc, err := listen(g)
+// listenGroup opens the RECEIVE socket, bound to the multicast group address.
+//
+// Binding the group rather than the wildcard is deliberate. Both ports are
+// already held on this host - mDNSResponder has 5353 and OrbStack has *:1900 -
+// and SO_REUSEPORT only lets sockets share a port when every holder set it,
+// which OrbStack's does not. The group address is a different, narrower
+// address that BSD allows alongside the existing wildcard, and it delivers
+// exactly the traffic we want.
+func listenGroup(g group) (net.PacketConn, error) {
+	return bindGroup(g.ip, g.port)
+}
+
+// listenSend opens a per-interface SEND socket, bound to that interface's own
+// address on the group's port.
+//
+// This must be a separate socket from the receive one. A socket bound to the
+// group address sends with a source of 224.0.0.251, which is not a valid
+// source address - the packets leave, and every receiver discards them. That
+// bug made the reflector look like it was working while delivering nothing.
+//
+// Binding the group's port (rather than an ephemeral one) matters too: mDNS
+// requires responses to originate from 5353, and responders ignore packets
+// that do not.
+func listenSend(ifi *net.Interface, g group) (*ipv4.PacketConn, error) {
+	addr, err := ipv4Addr(ifi)
 	if err != nil {
-		return nil, fmt.Errorf("listen %s/%d: %w", g.name, g.port, err)
+		return nil, err
 	}
-
+	lc := net.ListenConfig{Control: reusePorts}
+	pc, err := lc.ListenPacket(context.Background(), "udp4",
+		net.JoinHostPort(addr.String(), strconv.Itoa(g.port)))
+	if err != nil {
+		return nil, fmt.Errorf("send socket on %s: %w", ifi.Name, err)
+	}
 	conn := ipv4.NewPacketConn(pc)
-	gaddr := &net.UDPAddr{IP: g.ip}
-	for _, ifi := range []*net.Interface{lan, vm} {
-		if err := conn.JoinGroup(ifi, gaddr); err != nil {
-			pc.Close()
-			return nil, fmt.Errorf("join %s on %s: %w", g.name, ifi.Name, err)
-		}
-	}
-
-	// We need the ingress interface on every read to know which way to
-	// forward, and we set the egress interface per-write via the same struct.
-	if err := conn.SetControlMessage(ipv4.FlagInterface, true); err != nil {
+	if err := conn.SetMulticastInterface(ifi); err != nil {
 		pc.Close()
-		return nil, fmt.Errorf("control message: %w", err)
-	}
-	// Our own reflections must not be delivered back to us.
-	if err := conn.SetMulticastLoopback(false); err != nil {
-		pc.Close()
-		return nil, fmt.Errorf("disable loopback: %w", err)
+		return nil, fmt.Errorf("multicast interface %s: %w", ifi.Name, err)
 	}
 	// Discovery is link-local by design; 1 hop keeps reflected traffic on the
 	// two segments we bridge and off the rest of the network.
 	if err := conn.SetMulticastTTL(1); err != nil {
 		pc.Close()
-		return nil, fmt.Errorf("set ttl: %w", err)
+		return nil, fmt.Errorf("ttl on %s: %w", ifi.Name, err)
+	}
+	// Our own reflections must not be delivered back to us.
+	if err := conn.SetMulticastLoopback(false); err != nil {
+		pc.Close()
+		return nil, fmt.Errorf("loopback on %s: %w", ifi.Name, err)
+	}
+	return conn, nil
+}
+
+func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) (*reflector, error) {
+	pc, err := listenGroup(g)
+	if err != nil {
+		return nil, fmt.Errorf("listen %s/%d: %w", g.name, g.port, err)
+	}
+
+	rx := ipv4.NewPacketConn(pc)
+	gaddr := &net.UDPAddr{IP: g.ip}
+	for _, ifi := range []*net.Interface{lan, vm} {
+		if err := rx.JoinGroup(ifi, gaddr); err != nil {
+			pc.Close()
+			return nil, fmt.Errorf("join %s on %s: %w", g.name, ifi.Name, err)
+		}
+	}
+	// We need the ingress interface on every read to know which way to forward.
+	if err := rx.SetControlMessage(ipv4.FlagInterface, true); err != nil {
+		pc.Close()
+		return nil, fmt.Errorf("control message: %w", err)
+	}
+
+	tx := make(map[int]*ipv4.PacketConn, 2)
+	for _, ifi := range []*net.Interface{lan, vm} {
+		conn, err := listenSend(ifi, g)
+		if err != nil {
+			pc.Close()
+			for _, c := range tx {
+				c.Close()
+			}
+			return nil, err
+		}
+		tx[ifi.Index] = conn
 	}
 
 	local, err := localAddrs(lan, vm)
 	if err != nil {
 		pc.Close()
+		for _, c := range tx {
+			c.Close()
+		}
 		return nil, err
 	}
 
 	return &reflector{
-		g: g, conn: conn, lan: lan, vm: vm,
+		g: g, rx: rx, tx: tx, lan: lan, vm: vm,
 		dedupe: newDedupe(dedupeWindow), local: local, stats: st, log: log,
 	}, nil
 }
@@ -155,14 +212,17 @@ func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) 
 func (r *reflector) run(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
-		r.conn.Close()
+		r.rx.Close()
+		for _, c := range r.tx {
+			c.Close()
+		}
 	}()
 
 	dst := &net.UDPAddr{IP: r.g.ip, Port: r.g.port}
 	buf := make([]byte, 9000) // jumbo-safe; mDNS and SSDP are far smaller
 
 	for {
-		n, cm, src, err := r.conn.ReadFrom(buf)
+		n, cm, src, err := r.rx.ReadFrom(buf)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil // clean shutdown
@@ -188,8 +248,11 @@ func (r *reflector) run(ctx context.Context) error {
 			continue
 		}
 
-		out := &ipv4.ControlMessage{IfIndex: egress}
-		if _, err := r.conn.WriteTo(buf[:n], out, dst); err != nil {
+		out, ok := r.tx[egress]
+		if !ok {
+			continue
+		}
+		if _, err := out.WriteTo(buf[:n], nil, dst); err != nil {
 			// A single write failure is not fatal - the interface may be
 			// mid-reconfigure. Log and keep serving the other direction.
 			r.log.Warn("forward failed", "group", r.g.name, "egress", egress, "err", err)

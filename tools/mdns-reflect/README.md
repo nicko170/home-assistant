@@ -38,18 +38,32 @@ it is fixed elsewhere:
 Symptom if that regresses: `Subscription to <ip> failed, attempting to poll
 directly` in the HA log, and media players stuck `unavailable`.
 
-## SSDP is best-effort
+## Both groups bind, and that took a workaround
 
-`mdns` binds and works. `ssdp` usually does **not**, and that is expected.
+`mdns` (224.0.0.251:5353) and `ssdp` (239.255.255.250:1900) both reflect.
 
-OrbStack holds a wildcard `*:1900` without `SO_REUSEPORT` (it is forwarding the
-container's own SSDP listener), and macOS will not let us share the port —
-neither a wildcard nor a group-address bind wins that race. The process logs a
-warning and continues with whatever groups it could bind; it only exits if none
-bind at all.
+Getting there needed two non-obvious things, recorded because they look like
+dead ends:
 
-The cost is discovery of **new** UPnP devices only. Already-configured ones are
-reached by IP and fixed by the route above.
+**Receive and send must be separate sockets.** A socket bound to the group
+address sends with a source of 224.0.0.251, which is not a valid source
+address. The packets leave the host and every receiver silently discards them,
+so the reflector looks like it is working while delivering nothing. Send
+sockets bind the *interface's* address instead, on the group's port - mDNS
+requires responses to originate from 5353 and responders ignore packets that
+do not.
+
+**The receive socket cannot go through `net.ListenPacket`.** Go resolves a
+multicast listen address to the wildcard internally, so asking for
+`239.255.255.250:1900` really attempts `0.0.0.0:1900`, which collides with
+OrbStack's wildcard holder. The kernel is happy to bind the group address -
+the same call in Python succeeds - so `bind.go` makes the socket with direct
+syscalls. mDNSResponder holds 5353 and OrbStack holds 1900, neither sets
+`SO_REUSEPORT`, so a wildcard bind can never be shared with them.
+
+Binding an interface's unicast address is not an alternative for receiving:
+it binds and joins without error and then receives nothing. Measured at 0
+packets over 8s on a busy segment.
 
 ## Run
 

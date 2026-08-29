@@ -69,11 +69,18 @@ peer and answer directly.
 **Verified 2026-08-29:** `nc -z 192.168.139.2 8123` from a LAN host succeeds,
 Sonos went `unavailable` -> `idle`, the Cast soundbar `unavailable` -> `off`.
 
-**Discovery still does not reach the container**, even with all of the above.
-SSDP cannot be reflected at all (OrbStack owns `*:1900`), and reflected mDNS is
-not reliably picked up by the container's zeroconf. So Sonos and Cast are both
-pinned by IP rather than discovered. Anything new that relies on discovery will
-most likely need the same treatment.
+**Discovery works** as of 2026-08-29. The container's zeroconf sees every
+device on the LAN - both Apple TVs, the Sonos, the soundbar, the Frame. Both
+mDNS and SSDP reflect.
+
+The first cut of the reflector appeared to forward packets and delivered
+nothing: its send socket was bound to the multicast group, so packets went out
+with a source of `224.0.0.251` and every receiver dropped them. Send and
+receive are now separate sockets. See `tools/mdns-reflect/README.md`.
+
+Sonos and Cast remain pinned by IP (`packages/media.yaml` and the Cast options
+flow) as belt-and-braces. Discovery finds them now, but the explicit hosts cost
+nothing and mean a reflector regression does not take the speakers with it.
 
 **Symptoms if one regresses:** media players stuck `unavailable`; HA log shows
 `Subscription to <ip> failed, attempting to poll directly` (Sonos),
