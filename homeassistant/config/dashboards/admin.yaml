@@ -278,3 +278,225 @@ views:
                 name: Washer
               - entity: input_select.dryer_state
                 name: Dryer
+
+  # =================================================================
+  # Vacuum - S7 battery health.
+  #
+  # Exists because the pack was diagnosed end-of-life on 2026-08-29 and
+  # nothing in HA would have shown that: sensor.s7_battery reports a
+  # modelled discharge curve, not real charge, and it carries no
+  # state_class so its history vanished after 10 days. See
+  # packages/vacuum.yaml for the full diagnosis and the two sensors
+  # this view is built on.
+  - title: Vacuum
+    path: vacuum
+    type: sections
+    max_columns: 3
+    icon: mdi:robot-vacuum
+
+    sections:
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: S7 battery health
+            heading_style: title
+            icon: mdi:battery-heart-variant
+
+          # The headline number. Minutes of actual cleaning achieved on one
+          # charge - the only battery metric on this device that is measured
+          # rather than modelled.
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set m = states('sensor.s7_cleaning_minutes_per_charge')
+                         | float(0) %}
+              {% if not has_value('sensor.s7_cleaning_minutes_per_charge') %}
+              Awaiting first clean
+              {% elif m > 75 %}Battery healthy
+              {% elif m >= 45 %}Battery wearing
+              {% else %}BATTERY END OF LIFE{% endif %}
+            secondary: >-
+              {% if has_value('sensor.s7_cleaning_minutes_per_charge') %}
+              {{ states('sensor.s7_cleaning_minutes_per_charge') }} min per
+              charge - healthy is 90+, replace under 45
+              {% else %}
+              Populates when the vacuum next returns to dock
+              {% endif %}
+            icon: mdi:battery-heart-variant
+            icon_color: >-
+              {% set m = states('sensor.s7_cleaning_minutes_per_charge')
+                         | float(0) %}
+              {% if not has_value('sensor.s7_cleaning_minutes_per_charge') %}
+              grey
+              {% else %}
+              {{ 'green' if m > 75 else 'orange' if m >= 45 else 'red' }}
+              {% endif %}
+            tap_action:
+              action: more-info
+              entity: sensor.s7_cleaning_minutes_per_charge
+
+          # Long-term statistics, so this survives the 10-day purge and keeps
+          # accumulating for the life of the machine. A step down here is the
+          # pack aging; a step up is a successful battery swap.
+          - type: statistics-graph
+            title: Cleaning minutes per charge
+            entities:
+              - sensor.s7_cleaning_minutes_per_charge
+            days_to_show: 365
+            period: day
+            stat_types:
+              - mean
+            chart_type: line
+
+          # Read the dip, not the plateau. It sits docked at 100% nearly all
+          # day; the interesting part is the cliff when it gives up mid-run.
+          - type: custom:mini-graph-card
+            name: Battery level (7d)
+            entities:
+              - sensor.s7_battery_level
+            hours_to_show: 168
+            points_per_hour: 2
+            line_width: 2
+            show:
+              fill: fade
+              labels: true
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Consumables
+            heading_style: subtitle
+            icon: mdi:wrench-clock
+
+          # The integration reports these as seconds remaining, which is
+          # unreadable on a wall display, and lets them go NEGATIVE once
+          # overdue rather than clamping at zero. Both handled here.
+          - type: custom:mushroom-template-card
+            primary: Sensors
+            secondary: >-
+              {% set h = (states('sensor.s7_sensor_time_left')
+                          | float(0) / 3600) | int %}
+              {% if h < 0 %}OVERDUE by {{ h | abs }} h{% else %}{{ h }} h
+              left{% endif %}
+            icon: mdi:eye-outline
+            icon_color: >-
+              {% set h = (states('sensor.s7_sensor_time_left')
+                          | float(0) / 3600) | int %}
+              {{ 'red' if h < 0 else 'orange' if h < 10 else 'green' }}
+            tap_action:
+              action: more-info
+              entity: sensor.s7_sensor_time_left
+
+          - type: custom:mushroom-template-card
+            primary: Filter
+            secondary: >-
+              {% set h = (states('sensor.s7_filter_time_left')
+                          | float(0) / 3600) | int %}
+              {% if h < 0 %}OVERDUE by {{ h | abs }} h{% else %}{{ h }} h
+              left{% endif %}
+            icon: mdi:air-filter
+            icon_color: >-
+              {% set h = (states('sensor.s7_filter_time_left')
+                          | float(0) / 3600) | int %}
+              {{ 'red' if h < 0 else 'orange' if h < 10 else 'green' }}
+            tap_action:
+              action: more-info
+              entity: sensor.s7_filter_time_left
+
+          - type: custom:mushroom-template-card
+            primary: Side brush
+            secondary: >-
+              {% set h = (states('sensor.s7_side_brush_time_left')
+                          | float(0) / 3600) | int %}
+              {% if h < 0 %}OVERDUE by {{ h | abs }} h{% else %}{{ h }} h
+              left{% endif %}
+            icon: mdi:broom
+            icon_color: >-
+              {% set h = (states('sensor.s7_side_brush_time_left')
+                          | float(0) / 3600) | int %}
+              {{ 'red' if h < 0 else 'orange' if h < 20 else 'green' }}
+            tap_action:
+              action: more-info
+              entity: sensor.s7_side_brush_time_left
+
+          - type: custom:mushroom-template-card
+            primary: Main brush
+            secondary: >-
+              {% set h = (states('sensor.s7_main_brush_time_left')
+                          | float(0) / 3600) | int %}
+              {% if h < 0 %}OVERDUE by {{ h | abs }} h{% else %}{{ h }} h
+              left{% endif %}
+            icon: mdi:brush
+            icon_color: >-
+              {% set h = (states('sensor.s7_main_brush_time_left')
+                          | float(0) / 3600) | int %}
+              {{ 'red' if h < 0 else 'orange' if h < 30 else 'green' }}
+            tap_action:
+              action: more-info
+              entity: sensor.s7_main_brush_time_left
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Controls
+            heading_style: subtitle
+            icon: mdi:remote
+
+          - type: tile
+            entity: vacuum.s7
+            features:
+              - type: vacuum-commands
+                commands:
+                  - start_pause
+                  - stop
+                  - return_home
+                  - locate
+
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.s7_status
+                name: Status
+              - entity: sensor.s7_battery
+                name: Battery (as reported - see packages/vacuum.yaml)
+              - entity: binary_sensor.s7_charging
+                name: Charging
+              - type: section
+                label: Settings
+              - entity: select.s7_mop_intensity
+                name: Mop intensity
+              - entity: select.s7_selected_map
+                name: Selected map
+              - entity: number.s7_volume
+                name: Volume
+              - entity: switch.s7_do_not_disturb
+                name: Do not disturb
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lifetime
+            heading_style: subtitle
+            icon: mdi:counter
+
+          # Context for the battery verdict above. 932 cleans and 1231 hours
+          # is well past the point where a vacuum pack holds its rated
+          # capacity, which is the whole story of this tab.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.s7_total_cleaning_count
+                name: Total cleans
+              - entity: sensor.s7_total_cleaning_time
+                name: Total runtime
+              - entity: sensor.s7_total_cleaning_area
+                name: Total area
+              - entity: sensor.s7_last_clean_begin
+                name: Last clean started
+              - entity: sensor.s7_last_clean_end
+                name: Last clean ended
+
+          - type: picture-entity
+            entity: image.s7_map_0
+            show_state: false
+            show_name: false

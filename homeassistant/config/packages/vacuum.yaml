@@ -1,0 +1,104 @@
+# Roborock S7 battery health.
+#
+# WHY THIS EXISTS
+#
+# The S7's own battery sensor cannot be trusted while the vacuum is cleaning.
+# Diagnosed 2026-08-29 from the recorder plus the device's local API:
+#
+#   sensor.s7_battery reports a MODELLED discharge curve of about 0.7%/min
+#   (an idealised ~143 min runtime), not measured state of charge. It reads
+#   78% right up until the pack hits its low-voltage cutoff, then snaps to
+#   19% in the same second sensor.s7_status goes to returning_home.
+#
+#   2026-08-19 09:22:16  bat=78  ->  09:22:30  bat=19
+#   2026-08-28 11:47:11  bat=78  ->  11:48:30  bat=19
+#
+# Identical to the percentage point on both runs. The 19 is the real number:
+# recharging from it took 2h01m, which matches the measured ~0.5%/min charge
+# rate. Had it truly been at 78%, that leg would have taken five minutes.
+#
+# So the honest health metric is NOT battery percentage - it is how long the
+# thing actually cleans before it gives up. That was 31 minutes on both runs
+# against a Turbo-mode expectation of 90+, on a pack with 932 cleans and
+# 1231 hours on it.
+#
+# WHY state_class MATTERS HERE
+#
+# The recorder keeps only the default 10 days of full-resolution states, and
+# this house writes ~13.2M rows per 10 days (power_monitor_1 alone is 45% of
+# them at ~1Hz). Raising purge_keep_days would cost gigabytes and still lose
+# the history eventually. Declaring state_class instead makes the recorder
+# keep hourly min/mean/max rollups FOREVER, at a few KB a year, immune to
+# every purge. That is the only reason these two mirror sensors exist: the
+# underlying Roborock entities ship without a state_class, so they generate
+# no long-term statistics and their history evaporates after 10 days.
+#
+# Neither sensor backfills. History starts the day this package deploys.
+
+template:
+  # ---------------------------------------------------------------------
+  # Battery level, but with long-term statistics.
+  #
+  # Read the MIN series, not the mean. The vacuum sits docked at 100% almost
+  # all day, so the hourly mean stays pinned near 100 and hides everything.
+  # The min is what records each run's dip - and the 78->19 correction.
+  # ---------------------------------------------------------------------
+  - sensor:
+      - name: S7 battery level
+        unique_id: s7_battery_level
+        device_class: battery
+        state_class: measurement
+        unit_of_measurement: "%"
+        icon: mdi:battery-heart-variant
+        state: "{{ states('sensor.s7_battery') | int }}"
+        # A unit-bearing sensor must hold a number. Absence is expressed via
+        # availability rather than by letting 'unknown' coerce to 0, which
+        # would poison the statistics with fake flat-battery readings.
+        availability: >
+          {{ states('sensor.s7_battery') not in
+             ['unknown', 'unavailable', 'none'] }}
+
+  # ---------------------------------------------------------------------
+  # THE health metric: minutes of cleaning achieved on one charge.
+  #
+  # Fires when the vacuum decides to go home. trigger.from_state.last_changed
+  # is the moment it entered the cleaning state, so now() minus that is the
+  # length of the leg that just ended - no timer, no helper entity, no state
+  # machine to get out of sync.
+  #
+  # Expect ~31 min on the current worn pack. A healthy S7 in Turbo should
+  # clear 90. If this number climbs back above 75 after a battery swap, the
+  # swap worked; if it keeps sliding, the new pack is going the same way.
+  # ---------------------------------------------------------------------
+  - trigger:
+      - trigger: state
+        entity_id: sensor.s7_status
+        to: returning_home
+    # Only a leg that ended a CLEAN counts. Going home from paused or idle
+    # (told to dock from the app, say) would otherwise log a meaningless
+    # short duration and drag the trend down for no reason.
+    #
+    # Only segment_cleaning has been observed on this device, but the
+    # integration emits all four depending on how the run was started.
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.from_state.state in
+             ['cleaning', 'segment_cleaning', 'zoned_cleaning',
+              'spot_cleaning'] }}
+    sensor:
+      - name: S7 cleaning minutes per charge
+        unique_id: s7_cleaning_minutes_per_charge
+        state_class: measurement
+        unit_of_measurement: min
+        icon: mdi:battery-clock
+        state: >
+          {{ ((now() - trigger.from_state.last_changed).total_seconds() / 60)
+             | round(1) }}
+        attributes:
+          # Best-effort only. The gauge correction lands in the same second
+          # as the status change, so this may capture the pre-correction lie
+          # (78) rather than the truth (19) depending on which arrives first.
+          # The battery_level min series above is the reliable record.
+          battery_at_return: "{{ states('sensor.s7_battery') }}"
+          ended_from: "{{ trigger.from_state.state }}"
