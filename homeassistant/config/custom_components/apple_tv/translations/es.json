@@ -1,0 +1,59 @@
+{
+    "exceptions": {
+        "keyboard_error": {
+            "message": "Se produjo un error al enviar texto al Apple TV."
+        },
+        "keyboard_not_available": {
+            "message": "Este dispositivo no admite la entrada de teclado."
+        },
+        "keyboard_not_focused": {
+            "message": "Actualmente, ning\u00fan campo de entrada de texto est\u00e1 seleccionado en el Apple TV."
+        },
+        "not_connected": {
+            "message": "Apple TV no est\u00e1 conectado."
+        },
+        "stream_failed": {
+            "message": "No se pudo transmitir contenido multimedia al Apple TV."
+        },
+        "streaming_not_supported": {
+            "message": "No se admite la transmisi\u00f3n en directo del contenido multimedia solicitado."
+        }
+    },
+    "services": {
+        "append_keyboard_text": {
+            "description": "A\u00f1ade texto al campo de entrada de texto actualmente seleccionado en un Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "El Apple TV al que enviar el texto.",
+                    "name": "Apple TV"
+                },
+                "text": {
+                    "description": "El texto a a\u00f1adir."
+                }
+            },
+            "name": "A\u00f1adir texto del teclado"
+        },
+        "clear_keyboard_text": {
+            "description": "Borra el texto del campo de entrada de texto actualmente enfocado en un Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "El Apple TV al que enviar el texto.",
+                    "name": "Apple TV"
+                }
+            },
+            "name": "Borrar texto del teclado"
+        },
+        "set_keyboard_text": {
+            "description": "Establece el texto en el campo de entrada de texto actualmente seleccionado en un Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "El Apple TV al que enviar el texto.",
+                    "name": "Apple TV"
+                },
+                "text": {
+                    "description": "El texto a configurar."
+                }
+            }
+        }
+    }
+}

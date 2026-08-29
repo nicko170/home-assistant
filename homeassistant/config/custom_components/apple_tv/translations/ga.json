@@ -1,0 +1,142 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "T\u00e1 an gl\u00e9as cumraithe cheana f\u00e9in",
+            "already_in_progress": "T\u00e1 sreabhadh cumra\u00edochta ar si\u00fal cheana f\u00e9in",
+            "backoff": "N\u00ed ghlacann an gl\u00e9as le hiarratais p\u00e9ire\u00e1la faoi l\u00e1thair (b'fh\u00e9idir gur iontr\u00e1il t\u00fa c\u00f3d PIN neamhbhail\u00ed r\u00f3mhinic), d\u00e9an iarracht ar\u00eds ar ball.",
+            "device_did_not_pair": "N\u00ed dhearnadh aon iarracht an pr\u00f3iseas p\u00e9ire\u00e1la a chr\u00edochn\u00fa \u00f3n bhfeiste.",
+            "device_not_found": "N\u00edor aims\u00edodh an gl\u00e9as le linn an fhionnachtana, d\u00e9an iarracht \u00e9 a chur leis ar\u00eds.",
+            "inconsistent_device": "N\u00edor aims\u00edodh na pr\u00f3tacail a raibh s\u00fail leo le linn an fhionnachtana. De ghn\u00e1th l\u00e9ir\u00edonn s\u00e9 seo fadhb le DNS ilchraolta (Zeroconf). D\u00e9an iarracht an gl\u00e9as a chur leis ar\u00eds.",
+            "invalid_auth": "F\u00edordheimhni\u00fa neamhbhail\u00ed",
+            "ipv6_not_supported": "N\u00ed thaca\u00edtear le IPv6.",
+            "no_devices_found": "N\u00edor aims\u00edodh aon fheist\u00ed ar an l\u00edonra",
+            "reauth_successful": "D'\u00e9irigh leis an athfh\u00edordheimhni\u00fa",
+            "setup_failed": "Theip ar an ngl\u00e9as a shocr\u00fa.",
+            "unknown": "Earr\u00e1id gan choinne"
+        },
+        "error": {
+            "already_configured": "T\u00e1 an gl\u00e9as cumraithe cheana f\u00e9in",
+            "invalid_auth": "F\u00edordheimhni\u00fa neamhbhail\u00ed",
+            "no_devices_found": "N\u00edor aims\u00edodh aon fheist\u00ed ar an l\u00edonra",
+            "unknown": "Earr\u00e1id gan choinne"
+        },
+        "flow_title": "{name} ({type})",
+        "step": {
+            "confirm": {
+                "description": "T\u00e1 t\u00fa ar t\u00ed `{name}` den chine\u00e1l `{type}` a chur le Home Assistant.\n\n**Chun an pr\u00f3iseas a chr\u00edochn\u00fa, b\u2019fh\u00e9idir go mbeidh ort roinnt c\u00f3id PIN a iontr\u00e1il.**\n\nTabhair faoi deara nach mbeidh t\u00fa in ann do Apple TV a mh\u00fachadh leis an gcomhth\u00e1th\u00fa seo. N\u00ed mh\u00fachfar ach an seinnteoir me\u00e1n i Home Assistant!",
+                "title": "Deimhnigh cur Apple TV leis"
+            },
+            "pair_no_pin": {
+                "description": "T\u00e1 p\u00e9ire\u00e1il riachtanach don tseirbh\u00eds `{protocol}`. Cuir isteach an PIN {pin} ar do ghl\u00e9as le lean\u00faint ar aghaidh.",
+                "title": "P\u00e9ire\u00e1il"
+            },
+            "pair_with_pin": {
+                "data": {
+                    "pin": "C\u00f3id UAP"
+                },
+                "description": "T\u00e1 p\u00e9ire\u00e1il riachtanach don phr\u00f3tacal `{protocol}`. Cuir isteach an c\u00f3d PIN a thaispe\u00e1ntar ar an sc\u00e1ile\u00e1n. F\u00e1gfar nialais tosaigh ar l\u00e1r, i.e. cuir isteach 123 m\u00e1s \u00e9 0123 an c\u00f3d a thaispe\u00e1ntar.",
+                "title": "P\u00e9ire\u00e1il"
+            },
+            "password": {
+                "description": "\u00c9il\u00edonn `{protocol}` pasfhocal. N\u00ed thaca\u00edtear leis seo go f\u00f3ill, d\u00edchumasaigh an pasfhocal le lean\u00faint ar aghaidh.",
+                "title": "Pasfhocal ag teast\u00e1il"
+            },
+            "protocol_disabled": {
+                "description": "T\u00e1 p\u00e9ire\u00e1il riachtanach do `{protocol}` ach t\u00e1 s\u00e9 d\u00edchumasaithe ar an bhfeiste. Athbhreithnigh srianta rochtana f\u00e9ideartha (m.sh. lig do gach feiste ar an l\u00edonra \u00e1iti\u00fail ceangal) ar an bhfeiste.\n\nIs f\u00e9idir leat lean\u00faint ar aghaidh gan an pr\u00f3tacal seo a ph\u00e9ire\u00e1il, ach beidh roinnt feidhmi\u00falachta\u00ed teoranta.",
+                "title": "N\u00ed f\u00e9idir p\u00e9ire\u00e1il"
+            },
+            "restore_device": {
+                "description": "Athchumraigh an gl\u00e9as seo chun a fheidhmi\u00falacht a athbhun\u00fa.",
+                "title": "Athchumr\u00fa gl\u00e9asanna"
+            },
+            "service_problem": {
+                "description": "Tharla fadhb agus an pr\u00f3tacal `{protocol}` \u00e1 ph\u00e9ire\u00e1il. D\u00e9anfar neamhaird de.",
+                "title": "Theip ar an tseirbh\u00eds a chur leis"
+            },
+            "user": {
+                "data": {
+                    "device_input": "Gl\u00e9as"
+                },
+                "description": "Tosaigh tr\u00ed ainm na gl\u00e9is (m.sh. Cistin n\u00f3 Seomra Leapa) n\u00f3 seoladh IP an Apple TV is mian leat a chur leis a iontr\u00e1il.\n\nMura bhfeiceann t\u00fa do ghl\u00e9as n\u00f3 m\u00e1 bh\u00edonn aon fhadhbanna agat, d\u00e9an iarracht seoladh IP na gl\u00e9is a shonr\u00fa.",
+                "title": "Socraigh Apple TV nua"
+            }
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "keyboard_focused": {
+                "name": "F\u00f3cas m\u00e9archl\u00e1ir"
+            }
+        }
+    },
+    "exceptions": {
+        "keyboard_error": {
+            "message": "Tharla earr\u00e1id agus t\u00e9acs \u00e1 sheoladh chuig an Apple TV"
+        },
+        "keyboard_not_available": {
+            "message": "N\u00ed thaca\u00edonn an gl\u00e9as seo le hionchur m\u00e9archl\u00e1ir"
+        },
+        "keyboard_not_focused": {
+            "message": "N\u00edl aon r\u00e9imse ionchuir t\u00e9acs d\u00edrithe ar an Apple TV faoi l\u00e1thair"
+        },
+        "not_connected": {
+            "message": "N\u00edl Apple TV ceangailte"
+        },
+        "stream_failed": {
+            "message": "Theip ar shruth\u00fa me\u00e1n chuig an Apple TV"
+        },
+        "streaming_not_supported": {
+            "message": "N\u00ed thaca\u00edtear le sruth\u00fa na me\u00e1n iarrtha"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "start_off": "N\u00e1 cuir an gl\u00e9as ar si\u00fal agus Home Assistant \u00e1 thos\u00fa agat"
+                },
+                "description": "Cumraigh socruithe ginear\u00e1lta an ghl\u00e9is"
+            }
+        }
+    },
+    "services": {
+        "append_keyboard_text": {
+            "description": "Cuireann s\u00e9 t\u00e9acs leis an r\u00e9imse ionchuir t\u00e9acs at\u00e1 faoi dh\u00edri\u00fa faoi l\u00e1thair ar Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "An Apple TV le t\u00e9acs a sheoladh chuige.",
+                    "name": "Apple TV"
+                },
+                "text": {
+                    "description": "An t\u00e9acs le cur leis.",
+                    "name": "T\u00e9acs"
+                }
+            },
+            "name": "Cuir t\u00e9acs m\u00e9archl\u00e1ir leis"
+        },
+        "clear_keyboard_text": {
+            "description": "Glanann s\u00e9 an t\u00e9acs sa r\u00e9imse ionchuir t\u00e9acs at\u00e1 faoi l\u00e1thair ar Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "An Apple TV le t\u00e9acs a sheoladh chuige.",
+                    "name": "Apple TV"
+                }
+            },
+            "name": "Glan t\u00e9acs an mh\u00e9archl\u00e1ir"
+        },
+        "set_keyboard_text": {
+            "description": "Socra\u00edonn s\u00e9 an t\u00e9acs sa r\u00e9imse ionchuir t\u00e9acs at\u00e1 faoi l\u00e1thair ar Apple TV.",
+            "fields": {
+                "config_entry_id": {
+                    "description": "An Apple TV le t\u00e9acs a sheoladh chuige.",
+                    "name": "Apple TV"
+                },
+                "text": {
+                    "description": "An t\u00e9acs le socr\u00fa.",
+                    "name": "T\u00e9acs"
+                }
+            },
+            "name": "Socraigh t\u00e9acs m\u00e9archl\u00e1ir"
+        }
+    }
+}

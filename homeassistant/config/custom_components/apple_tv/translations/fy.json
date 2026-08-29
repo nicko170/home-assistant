@@ -1,0 +1,15 @@
+{
+    "config": {
+        "step": {
+            "pair_no_pin": {
+                "title": "Keppelje"
+            },
+            "pair_with_pin": {
+                "title": "Keppelje"
+            },
+            "protocol_disabled": {
+                "description": "Keppeljen is fereaske foar `{protocol}` mar it is \u00fatskeakele op it apparaat. Kontrolearje mooglike tagongsbeheiningen (bgl. alle apparaten op it lokale netwurk tastean ferbining te meitsjen) op it apparaat. \n\nKinst trochgean s\u00fbnder dit protokol te keppeljen, mar guon funksjes sille beheind w\u00eaze."
+            }
+        }
+    }
+}

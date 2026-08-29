@@ -40,6 +40,11 @@ homeassistant/config/ms365_storage/.MS365-token-cache/
 # ---- third-party, package-managed ----
 # HACS-installed integrations and frontend cards
 homeassistant/config/custom_components/
+# EXCEPTION: apple_tv is not a HACS download - it is our own patched fork of a
+# CORE integration (see its PATCH.md). It must survive a fresh checkout and
+# deploy like any other config, so it is tracked.
+!homeassistant/config/custom_components/apple_tv/
+!homeassistant/config/custom_components/apple_tv/**
 homeassistant/config/www/community/
 # external ESPHome library, cloned from github.com/awulf/Actron485
 homeassistant/config/Actron485/
