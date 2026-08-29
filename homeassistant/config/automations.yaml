@@ -1,21 +1,12 @@
-- id: '1756200632989'
-  alias: Turn TV on with Apple TV
-  description: ''
-  triggers:
-  - type: turned_on
-    device_id: 63da27bb84d9fa488f224cff0ec53b7a
-    entity_id: 4196fa171dd1d12ba4773d475e6ac0bc
-    domain: remote
-    trigger: device
-  conditions:
-  - condition: device
-    type: is_off
-    device_id: 5fd349f126883857d0184725988969f1
-    entity_id: 453e9663d560fc615464f71478260bb8
-    domain: remote
-  actions:
-  - type: turn_on
-    device_id: 5fd349f126883857d0184725988969f1
-    entity_id: 453e9663d560fc615464f71478260bb8
-    domain: remote
-  mode: single
+# UI-created automations live here. Currently empty.
+#
+# "Turn TV on with Apple TV" (id 1756200632989) was removed 2026-08-29 and
+# replaced by packages/lounge_av.yaml. It had never worked, for three
+# independent reasons:
+#   - it sat DISABLED; last triggered 2025-11-17
+#   - it triggered on remote.lounge_room turning on, which is a CONNECTION
+#     indicator, not a power state, so it effectively only fired on HA restart
+#   - it was written against opaque device_ids rather than entities
+# The replacement is entity-based, forced enabled with initial_state, and
+# documents each trap inline.
+[]

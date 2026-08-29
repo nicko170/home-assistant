@@ -1,0 +1,164 @@
+# Lounge AV - make the Frame follow the Apple TV.
+#
+# THE PROBLEM
+# HDMI-CEC carries the "wake the TV" command over the HDMI port. Once the Frame
+# has been in deep standby for ~15 minutes Samsung stops powering those ports,
+# so there is nothing awake to receive it. The Samsung remote still works
+# because IR goes to a receiver that stays powered. This is documented Samsung
+# behaviour across models and years, not a fault with this set, and no firmware
+# has fixed it - firmware 1520 actually broke CEC further on 2022 Frames.
+#
+# Reproduced here 2026-08-29 19:50: pressing power on the iOS remote moved
+# media_player.lounge_room off -> paused (ABC iview) while
+# media_player.65_the_frame_qa65ls03dawxxy stayed off.
+#
+# WHY WAKE-ON-LAN WORKS WHERE CEC DOES NOT
+# In deep standby the HDMI ports are unpowered but the Wi-Fi module is not -
+# that is the entire premise of WoL. So we wake the TV over the radio Samsung
+# leaves alive instead of the port it switches off.
+#
+# WoL is sent to the TV's IP rather than broadcast. HA runs in an OrbStack
+# container that is not on the LAN; unicast routes out fine, broadcast does not
+# (measured: 0 of 8 broadcast probes reached a LAN host). HA's own samsungtv
+# turn_on tries unicast first, which is why turning the TV on from HA has
+# always worked while CEC has not.
+#
+# ---------------------------------------------------------------------------
+# TRIGGER NOTES - two traps, both of which broke the previous automation
+#
+# 1. remote.lounge_room is NOT a power state. In apple_tv/remote.py:
+#        def is_on(self): return self.atv is not None
+#    It reports whether HA has a CONNECTION to the Apple TV, so it sits "on"
+#    for hours with the TV off and never transitions when someone presses
+#    power. The old automation triggered on it turning on, which in practice
+#    only happened when HA restarted. Use media_player.lounge_room instead -
+#    it reads the real PowerState.
+#
+# 2. HA cannot distinguish paused from stopped. In apple_tv/media_player.py:
+#        if state in (DeviceState.Paused, DeviceState.Seeking, DeviceState.Stopped):
+#            return MediaPlayerState.PAUSED
+#    So "kill it when stopped" is not expressible. `idle` IS distinct - it is
+#    the Apple TV sat on its home screen with nothing loaded, which is the real
+#    "we have stopped watching" signal. Hence idle gets the short timeout and
+#    paused gets a long backstop rather than being exempt forever.
+# ---------------------------------------------------------------------------
+
+wake_on_lan:
+
+automation:
+  # =========================================================================
+  - id: lounge_atv_wakes_tv
+    alias: "Lounge: Apple TV wakes the Frame"
+    description: >-
+      The CEC replacement. Fires when the Apple TV actually powers on, which is
+      media_player.lounge_room leaving "off" - not the remote entity.
+    # Survives an HA restart in the enabled state. The previous automation sat
+    # disabled for nine months without anyone noticing, which is most of why
+    # this never worked.
+    initial_state: true
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: media_player.lounge_room
+        from: "off"
+    conditions:
+      # Ignore the transient nulls the integration emits while connecting;
+      # only a real power-on should wake the TV.
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: media_player.lounge_room
+            state: ["unknown", "unavailable", "off"]
+      # Don't shout at a TV that is already on.
+      - condition: state
+        entity_id: media_player.65_the_frame_qa65ls03dawxxy
+        state: "off"
+    actions:
+      - action: wake_on_lan.send_magic_packet
+        data:
+          mac: "2c:99:75:c3:c3:d6"
+          # Unicast to the TV, NOT a broadcast - see the header. This is also
+          # what HA's samsungtv integration does internally, made explicit here
+          # because the implicit path is deprecated and removed in 2026.8.0.
+          broadcast_address: "192.168.15.70"
+
+  # =========================================================================
+  - id: lounge_atv_off_kills_chain
+    alias: "Lounge: Apple TV off kills the Frame and soundbar"
+    description: >-
+      Single shutdown path. The idle/paused timeout below turns the Apple TV
+      off rather than killing everything itself, so all shutdowns funnel
+      through here and there is only one place to change the behaviour.
+    initial_state: true
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: media_player.lounge_room
+        to: "off"
+        # Ride out brief dropouts - the Apple TV integration reports off on a
+        # reconnect, and a flap should not black out the room mid-film.
+        for: "00:00:30"
+    actions:
+      - action: media_player.turn_off
+        target:
+          entity_id:
+            - media_player.65_the_frame_qa65ls03dawxxy
+            - media_player.ultra_slim_soundbar
+
+  # =========================================================================
+  - id: lounge_idle_timeout
+    alias: "Lounge: nothing playing, shut the room down"
+    description: >-
+      Turns the Apple TV off, which cascades into the automation above and
+      takes the Frame and soundbar with it.
+    initial_state: true
+    mode: single
+    triggers:
+      # Home screen, nothing loaded. The real "we've stopped watching" state.
+      - trigger: state
+        entity_id: media_player.lounge_room
+        to: "idle"
+        for: "00:15:00"
+        id: idle
+      # Paused is deliberately generous - nipping out mid-episode should not
+      # cost you the room. This is only a backstop so a film paused and
+      # abandoned does not run the panel all night.
+      - trigger: state
+        entity_id: media_player.lounge_room
+        to: "paused"
+        for: "01:30:00"
+        id: paused
+    actions:
+      - action: media_player.turn_off
+        target:
+          entity_id: media_player.lounge_room
+
+  # =========================================================================
+  - id: frame_turn_on_action
+    alias: "Lounge: Frame turn-on action"
+    description: >-
+      Makes media_player.turn_on / remote.turn_on work for the Frame from
+      anywhere - the dashboard, voice, a script - not just the automation
+      above.
+
+      samsungtv's implicit Wake-on-LAN is deprecated and REMOVED in 2026.8.0
+      (see samsungtv/entity.py, DEPRECATED_IMPLICIT_WAKE_ON_LAN). Once that
+      lands, turning the TV on from HA stops working unless a turn-on action
+      like this exists. We are on 2026.7.4, so this is ahead of the break
+      rather than after it.
+    initial_state: true
+    mode: single
+    triggers:
+      # This one HAS to be a device trigger - samsungtv exposes no entity-based
+      # equivalent. If the Frame is ever removed and re-added this ID goes
+      # stale and the trigger silently stops matching; find the new one in
+      # .storage/core.device_registry by searching for QA65LS03DAWXXY.
+      - trigger: device
+        domain: samsungtv
+        device_id: 5fd349f126883857d0184725988969f1
+        type: turn_on
+    actions:
+      - action: wake_on_lan.send_magic_packet
+        data:
+          mac: "2c:99:75:c3:c3:d6"
+          broadcast_address: "192.168.15.70"
