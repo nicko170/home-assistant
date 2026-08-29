@@ -73,6 +73,19 @@ automation:
       - condition: state
         entity_id: media_player.65_the_frame_qa65ls03dawxxy
         state: "off"
+      # Ignore restart artefacts. On an HA restart the Apple TV entity is
+      # rebuilt and walks unavailable -> off -> paused within a second or two,
+      # which looks identical to a real power-on and turned the TV on during a
+      # deploy on 2026-08-29.
+      #
+      # A genuine press follows the Apple TV having been off for minutes or
+      # hours, so require the previous "off" to have actually lasted. Ten
+      # seconds is far longer than a restart walk and far shorter than any real
+      # gap between watching sessions.
+      - condition: template
+        value_template: >-
+          {{ (trigger.to_state.last_changed
+              - trigger.from_state.last_changed).total_seconds() > 10 }}
     actions:
       - action: wake_on_lan.send_magic_packet
         data:
@@ -153,10 +166,14 @@ automation:
       # equivalent. If the Frame is ever removed and re-added this ID goes
       # stale and the trigger silently stops matching; find the new one in
       # .storage/core.device_registry by searching for QA65LS03DAWXXY.
+      # NOTE: the type is "samsungtv.turn_on", NOT "turn_on". The bare form is
+      # rejected at setup with "value must be one of ['samsungtv.turn_on']"
+      # and the automation is silently disabled - which is exactly the failure
+      # mode this whole package exists to stop repeating.
       - trigger: device
         domain: samsungtv
         device_id: 5fd349f126883857d0184725988969f1
-        type: turn_on
+        type: samsungtv.turn_on
     actions:
       - action: wake_on_lan.send_magic_packet
         data:
