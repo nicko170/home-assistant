@@ -55,7 +55,25 @@ any one missing reproduces the original symptoms.
 |---|---|---|
 | static route `192.168.138.0/23 -> 192.168.15.4` | Juniper SRX320 (`192.168.15.1`) | LAN can address the container |
 | `net.inet.ip.forwarding=1` | `deploy/install-ip-forward.sh` (LaunchDaemon, needs sudo) | this host actually forwards those packets |
-| mDNS reflection | `deploy/install-mdns-reflect.sh` (LaunchAgent) | multicast discovery crosses both ways |
+| pf source-NAT to `bridge100` | `deploy/install-pf-ha-container.sh` (needs sudo) | container replies on-link instead of via OrbStack's NAT |
+| mDNS reflection | `deploy/install-mdns-reflect.sh` (LaunchAgent) | best-effort multicast discovery |
+| explicit device IPs | `packages/media.yaml`, Cast options | discovery bypassed entirely where it still does not work |
+
+The pf piece is the one that actually made it work. Route plus forwarding got
+packets *in*, but the container's default route is OrbStack's NAT gateway, so
+replies to an off-link LAN host were SNATed to `192.168.15.4` — the client had
+opened its connection to `192.168.139.2`, so it dropped them. Source-NATing
+inbound traffic to `bridge100`'s address makes the container see an on-link
+peer and answer directly.
+
+**Verified 2026-08-29:** `nc -z 192.168.139.2 8123` from a LAN host succeeds,
+Sonos went `unavailable` -> `idle`, the Cast soundbar `unavailable` -> `off`.
+
+**Discovery still does not reach the container**, even with all of the above.
+SSDP cannot be reflected at all (OrbStack owns `*:1900`), and reflected mDNS is
+not reliably picked up by the container's zeroconf. So Sonos and Cast are both
+pinned by IP rather than discovered. Anything new that relies on discovery will
+most likely need the same treatment.
 
 **Symptoms if one regresses:** media players stuck `unavailable`; HA log shows
 `Subscription to <ip> failed, attempting to poll directly` (Sonos),

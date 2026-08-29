@@ -22,3 +22,15 @@ sonos:
     hosts:
       # Sonos One, "Play Room". The only Sonos on the network.
       - 192.168.15.82
+
+# GOOGLE CAST is NOT configurable from YAML - it is config-entry only, so the
+# equivalent setting lives in the UI and not in this repo. Recorded here
+# because it is otherwise invisible to anyone reading the config:
+#
+#   Settings > Devices & Services > Google Cast > Configure
+#     Known hosts: 192.168.15.22      (Samsung S801D "Ultra Slim Soundbar")
+#
+# Same reasoning as the Sonos host above - it pins the device by IP so setup
+# does not depend on mDNS reaching the container. Set 2026-08-29. If the
+# soundbar goes unavailable after a Cast reconfigure, this is the field that
+# was lost.
