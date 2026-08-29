@@ -83,14 +83,15 @@ type stats struct {
 }
 
 type reflector struct {
-	g       group
-	rx      *ipv4.PacketConn
-	tx      map[int]*ipv4.PacketConn // egress interface index -> send socket
-	lan, vm *net.Interface
-	dedupe  *dedupe
-	local   map[string]bool
-	stats   *stats
-	log     *slog.Logger
+	g        group
+	rx       *ipv4.PacketConn
+	tx       map[int]*ipv4.PacketConn // egress interface index -> send socket
+	lan, vm  *net.Interface
+	dedupe   *dedupe
+	local    map[string]bool
+	stats    *stats
+	log      *slog.Logger
+	wildcard bool // false = multicast-only visibility, see bindReceive
 }
 
 func reusePorts(_, _ string, c syscall.RawConn) error {
@@ -108,16 +109,10 @@ func reusePorts(_, _ string, c syscall.RawConn) error {
 	return serr
 }
 
-// listenGroup opens the RECEIVE socket, bound to the multicast group address.
-//
-// Binding the group rather than the wildcard is deliberate. Both ports are
-// already held on this host - mDNSResponder has 5353 and OrbStack has *:1900 -
-// and SO_REUSEPORT only lets sockets share a port when every holder set it,
-// which OrbStack's does not. The group address is a different, narrower
-// address that BSD allows alongside the existing wildcard, and it delivers
-// exactly the traffic we want.
-func listenGroup(g group) (net.PacketConn, error) {
-	return bindGroup(g.ip, g.port)
+// listenGroup opens the RECEIVE socket. See bindReceive in bind.go for why the
+// wildcard is preferred and what visibility is lost when it is unavailable.
+func listenGroup(g group) (net.PacketConn, bool, error) {
+	return bindReceive(g.ip, g.port)
 }
 
 // listenSend opens a per-interface SEND socket, bound to that interface's own
@@ -162,9 +157,15 @@ func listenSend(ifi *net.Interface, g group) (*ipv4.PacketConn, error) {
 }
 
 func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) (*reflector, error) {
-	pc, err := listenGroup(g)
+	pc, wildcard, err := listenGroup(g)
 	if err != nil {
 		return nil, fmt.Errorf("listen %s/%d: %w", g.name, g.port, err)
+	}
+	if !wildcard {
+		// Worth saying out loud: on this bind we see multicast announcements
+		// but not unicast query responses, so discovery is partial.
+		log.Warn("group-address bind only; unicast replies will not be reflected",
+			"group", g.name, "port", g.port)
 	}
 
 	rx := ipv4.NewPacketConn(pc)
@@ -204,7 +205,7 @@ func newReflector(g group, lan, vm *net.Interface, log *slog.Logger, st *stats) 
 	}
 
 	return &reflector{
-		g: g, rx: rx, tx: tx, lan: lan, vm: vm,
+		g: g, rx: rx, tx: tx, lan: lan, vm: vm, wildcard: wildcard,
 		dedupe: newDedupe(dedupeWindow), local: local, stats: st, log: log,
 	}, nil
 }

@@ -7,24 +7,44 @@ import (
 	"syscall"
 )
 
-// bindGroup binds a UDP socket to a multicast GROUP address.
+// bindReceive opens the receive socket for a group, preferring a WILDCARD bind
+// and falling back to the group address.
 //
-// This deliberately bypasses net.ListenConfig.ListenPacket. Go resolves a
-// multicast listen address to the wildcard internally, so asking it for
-// 239.255.255.250:1900 actually attempts 0.0.0.0:1900 - which collides with
-// OrbStack's existing wildcard holder and fails with EADDRINUSE. The kernel
-// itself is perfectly willing to bind the group address (verified with the
-// equivalent Python calls, which succeed on both 5353 and 1900); only Go's
-// convenience layer is in the way.
+// The wildcard is strongly preferred, and the reason is not obvious.
+// Discovery protocols answer queries by UNICAST as often as by multicast -
+// mDNS has the QU bit, SSDP answers M-SEARCH unicast to the querier. A socket
+// bound to 224.0.0.251 only ever sees traffic addressed to the group, so every
+// unicast reply is invisible to it. Measured on this host over 12s: wildcard
+// received 278 mDNS packets, the group bind 27. Reflecting only the multicast
+// half means queries go out and answers never come back, which looks exactly
+// like a reflector that is running fine and discovering nothing.
 //
-// Binding the group rather than the wildcard is what lets us coexist with
-// mDNSResponder on 5353 and OrbStack on 1900, neither of which sets
-// SO_REUSEPORT, so a wildcard bind can never be shared with them.
+// The fallback exists because the wildcard is not always available. 5353 is
+// held by mDNSResponder and 1900 by OrbStack; SO_REUSEPORT only shares a port
+// when every holder set it, and OrbStack's did not. So mDNS gets the wildcard
+// and full two-way reflection, while SSDP falls back to the group address and
+// carries multicast NOTIFY announcements only. That is enough for devices that
+// announce themselves periodically, which includes Sonos.
 //
-// Receiving multicast REQUIRES this. A socket bound to an interface's unicast
-// address binds and joins fine but receives nothing - measured, 0 packets over
-// 8s on a busy segment. That is why send and receive are separate sockets.
-func bindGroup(ip net.IP, port int) (net.PacketConn, error) {
+// Both paths use direct syscalls rather than net.ListenConfig.ListenPacket,
+// because Go resolves a multicast listen address to the wildcard internally -
+// asking it for 239.255.255.250:1900 really attempts 0.0.0.0:1900. That makes
+// the two cases indistinguishable from Go's API and silently collides with
+// OrbStack.
+func bindReceive(group net.IP, port int) (pc net.PacketConn, wildcard bool, err error) {
+	if pc, err = rawBind(net.IPv4zero, port); err == nil {
+		return pc, true, nil
+	}
+	wildErr := err
+	if pc, err = rawBind(group, port); err == nil {
+		return pc, false, nil
+	}
+	return nil, false, fmt.Errorf("wildcard: %v; group: %w", wildErr, err)
+}
+
+// rawBind creates a UDP socket bound to exactly the address given, with the
+// reuse options set before bind so it can coexist with an existing holder.
+func rawBind(ip net.IP, port int) (net.PacketConn, error) {
 	v4 := ip.To4()
 	if v4 == nil {
 		return nil, fmt.Errorf("%s is not an IPv4 address", ip)
@@ -34,8 +54,7 @@ func bindGroup(ip net.IP, port int) (net.PacketConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("socket: %w", err)
 	}
-	// From here on every error path must close the fd; it is not yet owned by
-	// an os.File that would finalise it.
+	// Until an os.File owns this fd, every error path has to close it by hand.
 	fail := func(format string, args ...any) (net.PacketConn, error) {
 		syscall.Close(fd)
 		return nil, fmt.Errorf(format, args...)
@@ -55,8 +74,8 @@ func bindGroup(ip net.IP, port int) (net.PacketConn, error) {
 	}
 
 	f := os.NewFile(uintptr(fd), fmt.Sprintf("mcast:%s:%d", ip, port))
-	// FilePacketConn dups the descriptor, so the os.File is ours to close
-	// regardless of outcome - leaving it open would leak one fd per group.
+	// FilePacketConn dups the descriptor, so this os.File is ours to close
+	// either way - not closing it leaks one fd per group.
 	defer f.Close()
 
 	pc, err := net.FilePacketConn(f)
