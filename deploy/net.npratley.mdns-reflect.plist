@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>net.npratley.mdns-reflect</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nickp/ha-deploy/bin/mdns-reflect</string>
+        <string>-lan</string><string>en0</string>
+        <string>-vm</string><string>bridge100</string>
+        <string>-groups</string><string>mdns,ssdp</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>StandardOutPath</key><string>/Users/nickp/ha-deploy/mdns-reflect.out.log</string>
+    <key>StandardErrorPath</key><string>/Users/nickp/ha-deploy/mdns-reflect.err.log</string>
+</dict>
+</plist>
