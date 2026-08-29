@@ -1,22 +1,21 @@
 # ===========================================================================
-# PARKED 2026-08-29 - ALL FOUR AUTOMATIONS ARE DISABLED (initial_state: false)
+# ENABLED 2026-08-29 after the underlying state bug was fixed.
 #
-# They were switching the room off repeatedly. Root cause is NOT the automation
-# logic: Home Assistant lost its connection to the Apple TV at 19:56 and never
-# got it back. apple_tv/remote.py defines is_on as `self.atv is not None`, so a
-# dropped connection reports as remote OFF and media_player OFF - identical to
-# the device genuinely being powered down. The shutdown automation cannot tell
-# those apart and acted on a connection fault as if it were a power-off.
+# These were parked earlier the same day because they were switching the room
+# off at random. That was never the automation logic - HA had silently lost its
+# connection to the Apple TV, and apple_tv reports a lost connection
+# identically to a powered-off device, so the shutdown automation acted on a
+# network fault as though someone had pressed stop.
 #
-# The Apple TV itself is fine: it is reachable on 192.168.15.13 and a direct
-# pyatv scan finds AirPlay, Companion and RAOP. HA's own connect loop hangs -
-# "apple_tv connect loop Lounge Room did not complete in time" - without ever
-# raising, so nothing lands in the log.
+# Root cause was upstream and is now patched: see
+# custom_components/apple_tv/PATCH.md. media_player.lounge_room now tracks the
+# device reliably, with zero reconnect churn.
 #
-# DO NOT RE-ENABLE until media_player.lounge_room is proven to track the Apple
-# TV reliably, and the shutdown path can distinguish "powered off" from "HA
-# lost the connection". The research below is still good; the trigger source is
-# not trustworthy yet.
+# STILL TRUE, AND THE REASON TO BE CAREFUL: `off` on an apple_tv entity means
+# "powered off OR not currently reachable". lounge_atv_off_kills_chain is the
+# only automation here that switches things OFF, so it is the only one where
+# that ambiguity can cost you the room. Its 30s `for:` absorbs brief flaps; a
+# sustained outage would still black out the TV.
 # ===========================================================================
 
 # Lounge AV - make the Frame follow the Apple TV.
@@ -76,7 +75,7 @@ automation:
     # Survives an HA restart in the enabled state. The previous automation sat
     # disabled for nine months without anyone noticing, which is most of why
     # this never worked.
-    initial_state: false
+    initial_state: true
     mode: single
     triggers:
       - trigger: state
@@ -123,7 +122,7 @@ automation:
       Single shutdown path. The idle/paused timeout below turns the Apple TV
       off rather than killing everything itself, so all shutdowns funnel
       through here and there is only one place to change the behaviour.
-    initial_state: false
+    initial_state: true
     mode: single
     triggers:
       - trigger: state
@@ -145,7 +144,7 @@ automation:
     description: >-
       Turns the Apple TV off, which cascades into the automation above and
       takes the Frame and soundbar with it.
-    initial_state: false
+    initial_state: true
     mode: single
     triggers:
       # Home screen, nothing loaded. The real "we've stopped watching" state.
@@ -180,7 +179,7 @@ automation:
       lands, turning the TV on from HA stops working unless a turn-on action
       like this exists. We are on 2026.7.4, so this is ahead of the break
       rather than after it.
-    initial_state: false
+    initial_state: true
     mode: single
     triggers:
       # This one HAS to be a device trigger - samsungtv exposes no entity-based

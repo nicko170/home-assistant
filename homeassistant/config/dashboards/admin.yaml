@@ -247,16 +247,18 @@ views:
               - entity: automation.laundry_dryer_back_to_idle
                 name: Dryer reset
 
-          # Lounge AV. All four are DISABLED by default (initial_state: false
-          # in packages/lounge_av.yaml) and these toggles are how you turn them
-          # on. Note that flipping one here does NOT survive a restart - the
-          # package decides the state on every start.
+          # Lounge AV. All four are enabled on start (initial_state: true in
+          # packages/lounge_av.yaml), so switching one off here is temporary -
+          # the package restores it on the next restart or deploy. To disable
+          # one for good, change it there.
           #
-          # "Apple TV off" is the one that bites: apple_tv reports a lost
-          # connection identically to a powered-off device, so if HA drops the
-          # Apple TV this switches the TV and soundbar off mid-programme. It
-          # did exactly that on 2026-08-29. Leave it off until the shutdown
-          # path also checks the device is genuinely unreachable.
+          # "Apple TV off kills the room" is the only one that switches things
+          # OFF, and apple_tv reports a lost connection identically to a
+          # powered-off device. If HA ever drops the Apple TV for more than 30
+          # seconds, this will black out the room. That happened on 2026-08-29;
+          # the cause was an upstream bug, now patched in
+          # custom_components/apple_tv. This toggle is the fast way to stop it
+          # if the room starts switching itself off again.
           - type: entities
             title: Lounge AV
             show_header_toggle: false
