@@ -113,7 +113,12 @@ automation:
           # Unicast to the TV, NOT a broadcast - see the header. This is also
           # what HA's samsungtv integration does internally, made explicit here
           # because the implicit path is deprecated and removed in 2026.8.0.
-          broadcast_address: "192.168.15.70"
+          #
+          # The IP must be the Frame's SRX reservation "samsung-frame-tv". This
+          # was .70, a stale dynamic lease: the TV drifted to .43, .24 and .22,
+          # and every magic packet went to an empty address. That is why this
+          # automation fired but the TV only came on when someone used the remote.
+          broadcast_address: "192.168.15.22"
 
   # =========================================================================
   - id: lounge_atv_off_kills_chain
@@ -198,4 +203,4 @@ automation:
       - action: wake_on_lan.send_magic_packet
         data:
           mac: "2c:99:75:c3:c3:d6"
-          broadcast_address: "192.168.15.70"
+          broadcast_address: "192.168.15.22"  # reservation "samsung-frame-tv"

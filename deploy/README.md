@@ -91,3 +91,35 @@ looked like broken devices for months and none of them were.
 SSDP reflection is **expected to fail** and logs a warning: OrbStack holds a
 wildcard `*:1900` without `SO_REUSEPORT`. Only discovery of *new* UPnP devices
 is affected. See `tools/mdns-reflect/README.md`.
+
+## LAN address plan (added 2026-11-12)
+
+The SRX320 **forgets every DHCP lease when it reboots, and whenever jdhcpd restarts.** That happened
+on 2026-11-07 and again on 2026-11-08. Binding persistence (`persistent-storage`) is a hidden,
+unsupported statement on this platform, so it can't be turned on. Anything HA pins by IP must
+therefore have an SRX `host` reservation **outside** the dynamic range. Otherwise the next outage
+reshuffles it.
+
+| range | use |
+|---|---|
+| `.1`–`.9` | infrastructure, static (SRX `.1`, sw01 `.2`, mac mini `.4`, cpu-dev-01 `.5`) |
+| `.10`–`.99` | SRX reservations: IoT, AV and appliances at the address each already had |
+| `.100`–`.225` | **dynamic pool** (phones, laptops, guests) |
+| `.226`–`.239` | SRX reservations: ESPHome, Tuya, inverter, Sonos, soundbar, garage door |
+| `.240`–`.249` | cameras, static IPs configured on the cameras |
+
+The SRX config (`groups Home-Net-001 access address-assignment pool Home-Net-001 family inet
+host ...`) is the authoritative list. NetBox does not model the house LAN.
+
+The 2026-11-08 outage moved the soundbar onto the garage door ESP32's hardcoded `.17`. The
+garage cover and every BTHome sensor were down for four days, and the Frame's wake-on-LAN had
+been pointing at an empty address for weeks.
+
+Adding a reservation for a device that holds a different address needs both steps below. A
+binding that is still live keeps getting ACKed at the old address.
+1. `clear dhcp server binding <old-ip>`
+2. make the client re-request: power-cycle it, or a remote reboot where one exists
+
+The server NAKs the client's INIT-REBOOT and offers the reservation, as seen in `srx-dhcp.log`.
+Changing the pool range drops every dynamic binding, but clients keep their address until
+renewal, so nothing breaks.

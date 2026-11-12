@@ -109,11 +109,18 @@ pfctl -a "$ANCHOR" -s rules 2>/dev/null || true
 
 # The regression that would matter most: these rules must not cost the
 # container its own outbound access. Check explicitly and self-revert.
+#
+# The probe targets MUST be pinned addresses (SRX reservations or static IPs).
+# They used to include the Sonos at .82 and the soundbar at .22, both dynamic.
+# After the 2026-11-08 outage reshuffled DHCP, only one of the three answered.
+# A re-run would then have "detected" lost LAN access and flushed the very
+# anchor HA depends on. Now: Sonos (reservation .235), soundbar (reservation
+# .237), doorbell (static .240).
 print "=== verify: container must still reach the LAN ==="
 if ! "$DOCKER" exec homeassistant python3 -c '
 import socket
 ok = 0
-for h, p in [("192.168.15.82", 1400), ("192.168.15.22", 8009), ("192.168.15.240", 80)]:
+for h, p in [("192.168.15.235", 1400), ("192.168.15.237", 8009), ("192.168.15.240", 80)]:
     s = socket.socket(); s.settimeout(4)
     try:
         s.connect((h, p)); print("  OK   %s:%s" % (h, p)); ok += 1
