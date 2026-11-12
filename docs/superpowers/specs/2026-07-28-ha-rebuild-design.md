@@ -21,7 +21,7 @@ unrelated outage surfaced several problems that block the rebuild:
   of 2026-07-28.
 
 Hardware available: Sofar G3 inverter (Solarman logger, `.226`), Tuya MSB meter with 16 sub-circuits
-(`.227`, currently offline pending wifi rejoin), four ESPHome power monitors (`.230`–`.233`), six
+(`.228`, currently offline pending wifi rejoin; `.227` turned out to be a Tuya sound machine), four ESPHome power monitors (`.230`–`.233`), six
 cameras (`.240`–`.245`, one dead), a Reolink PoE doorbell.
 
 ## Goals
@@ -212,7 +212,7 @@ Do not change any inverter setting before self-consumption measurement exists to
 - Delete the Garden Water Timer ESPHome entry and the "Water Front Gardens" automation.
 - Disable the Actron Controller entry until the PCB is ready, so it stops erroring.
 - Surface for the user to action: Plex reauth, Roborock auth, Matter error.
-- Track the MSB meter (`.227`) rejoining wifi; it may need a power cycle.
+- Track the MSB meter (`.228`) rejoining wifi; it may need a power cycle.
 
 ---
 

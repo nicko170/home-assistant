@@ -293,7 +293,7 @@ views:
               - entity: binary_sensor.inverter_connection
                 name: Inverter link
               - entity: sensor.msb_meter_power_total
-                name: MSB meter (needs Tuya key)
+                name: MSB meter
               - entity: sensor.power_monitor_1_575ec1_power
                 name: Network rack
               - entity: sensor.power_monitor_2_f27486_power
