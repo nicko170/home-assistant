@@ -95,8 +95,9 @@ is affected. See `tools/mdns-reflect/README.md`.
 ## LAN address plan (added 2026-11-12)
 
 The SRX320 **forgets every DHCP lease when it reboots, and whenever jdhcpd restarts.** That happened
-on 2026-11-07 and again on 2026-11-08. Binding persistence (`persistent-storage`) is a hidden,
-unsupported statement on this platform, so it can't be turned on. Anything HA pins by IP must
+on 2026-11-07 and again on 2026-11-08. Binding persistence (`persistent-storage`) parses on this
+box, but it is a hidden statement: Juniper documents it for ACX only. It has never been tried
+here, and nothing should depend on it. Anything HA pins by IP must
 therefore have an SRX `host` reservation **outside** the dynamic range. Otherwise the next outage
 reshuffles it.
 
@@ -105,7 +106,7 @@ reshuffles it.
 | `.1`–`.9` | infrastructure, static (SRX `.1`, sw01 `.2`, mac mini `.4`, cpu-dev-01 `.5`) |
 | `.10`–`.99` | SRX reservations: IoT, AV and appliances at the address each already had |
 | `.100`–`.225` | **dynamic pool** (phones, laptops, guests) |
-| `.226`–`.239` | SRX reservations: ESPHome, Tuya, inverter, Sonos, soundbar, garage door |
+| `.226`–`.239` | SRX reservations: ESPHome, Tuya, inverter, Sonos, soundbar, garage door, a40 BMC `.234` |
 | `.240`–`.249` | cameras, static IPs configured on the cameras |
 
 The SRX config (`groups Home-Net-001 access address-assignment pool Home-Net-001 family inet

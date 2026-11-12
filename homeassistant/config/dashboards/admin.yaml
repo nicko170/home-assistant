@@ -194,19 +194,22 @@ views:
               **.243 Hikvision DS-2CD2732F-IS - alive but factory reset.**
               It was believed dead (zero PoE on `ge-0/0/3` since ~June 2026).
               It is now on sw01 `ge-0/0/11` (still labelled as the a40 BMC),
-              drawing 3.2 W, but sitting on the Hikvision default
-              192.168.1.64, unactivated. Found 2026-11-12. Re-activating it
-              needs a new admin password set through SADP or its web UI,
-              then re-IP to .243. The link also flaps every ~5 min, so check
-              the cable.
+              on the Hikvision default 192.168.1.64, unactivated. Found
+              2026-11-12. It cycles about every 5 min because sw01 cuts its
+              PoE: `show poe interface ge-0/0/11` reports "Static Mode
+              Exceeded Power Limit" at the 7.0 W class-2 cap. Raise the
+              port's PoE `maximum-power` first, then activate it (new admin
+              password through SADP or its web UI) and re-IP to .243.
 
 
               **Back Yard Reolink (.245) - recovered 2026-11-12.**
-              Dark from 2026-10-27 23:14Z (rack recabling) with PoE stuck in
-              "Detection In Progress" even across the 11-08 reboot. A TDR test
-              on sw01 `ge-0/0/4` re-armed detection and it powered up. TDR
-              showed a short on pairs 4-5/7-8 at 26-28 m (the camera end). If
-              it drops again, check the outdoor connector for moisture.
+              Dark from 2026-10-27 23:14Z (rack recabling) with sw01 PoE
+              stuck in "Detection In Progress", even across the 11-08 reboot.
+              Running `request diagnostics tdr start interface ge-0/0/4`
+              re-armed detection and it powered up within a minute. If it goes
+              dark with 0 W again, try that first. TDR read the data pairs as
+              normal and a "short" on spare pairs 4-5/7-8 at 26-28 m. That is
+              probably the camera's PoE input, not a fault.
 
 
               **MSB Meter (.228) - host was rewritten to 127.0.0.1.**
@@ -214,10 +217,14 @@ views:
               unreachable device with the beacon's source address. Inside
               OrbStack that is always 127.0.0.1. It parked the meter from
               2026-09-20 to 2026-11-12. This is upstream bug #5713; 2026.8.0
-              disables that sweep, and it is installed. Never go back to
-              2026.7.2. If the 63 entities go unavailable, check the host
-              first (Settings → Devices → Tuya Local → MSB Meter → Configure).
-              The `local_key` is correct: keep it.
+              disables that sweep, and it is installed. Its manifest still
+              says "2026.7.2" (upstream mislabel), so trust HACS's installed
+              version. Upstream only commented the sweep out ("TEMPORARILY
+              DISABLED"). Before any tuya_local update, check discovery.py
+              still has it off. 2026.8.1+ needs HA 2026.8. If the 63 entities
+              go unavailable, check the host first (Settings → Devices → Tuya
+              Local → MSB Meter → Configure). The `local_key` is correct: keep
+              it. Ignore any tuya_local discovery tile named 127.0.0.1.
 
   # =================================================================
   - title: Updates

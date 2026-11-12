@@ -112,9 +112,10 @@ pfctl -a "$ANCHOR" -s rules 2>/dev/null || true
 #
 # The probe targets MUST be pinned addresses (SRX reservations or static IPs).
 # They used to include the Sonos at .82 and the soundbar at .22, both dynamic.
-# After the 2026-11-08 outage reshuffled DHCP, only one of the three answered.
-# A re-run would then have "detected" lost LAN access and flushed the very
-# anchor HA depends on. Now: Sonos (reservation .235), soundbar (reservation
+# The Sonos probe went stale on 2026-10-03, when the Sonos moved to its .235
+# reservation. The 2026-11-08 outage then moved the soundbar off .22, leaving
+# one of three. A re-run would have "detected" lost LAN access and flushed the
+# very anchor HA depends on. Now: Sonos (reservation .235), soundbar (reservation
 # .237), doorbell (static .240).
 print "=== verify: container must still reach the LAN ==="
 if ! "$DOCKER" exec homeassistant python3 -c '
