@@ -38,9 +38,15 @@ files would be overwritten by merge"*. Everything goes through git.
 
 ## Current devices
 
+Every address here must sit **outside the Juniper's DHCP pool (`.100`–`.225` since 2026-11-12;
+see `deploy/README.md`, "LAN address plan")** and have a matching `host` reservation on the SRX.
+The garage door used to be a static `.17` inside the pool, which was then `.10`–`.225`: the
+2026-11-08 outage rebooted the SRX, its lease table was lost, `.17` went to the Samsung soundbar, and
+the garage cover and every BTHome sensor were unavailable for four days.
+
 | config | device | address |
 |---|---|---|
-| `garage-door.yaml` | Garage Door — relay, BTHome BLE proxy | 192.168.15.17 |
+| `garage-door.yaml` | Garage Door — relay, BTHome BLE proxy | 192.168.15.236 |
 | `actron-sniffer.yaml` | Actron LR7 RS485 sniffer, listen-only | 192.168.15.229 |
 | `power-monitor-2-f27486.yaml` | Power Monitor 2 — Lounge Media | 192.168.15.231 |
 | `msb-power-monitor.yaml` | not currently deployed | — |

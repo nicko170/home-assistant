@@ -46,8 +46,17 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   fast_connect: true
+  # Static, and OUTSIDE the Juniper's DHCP pool (.10-.225). It used to be .17,
+  # inside the pool with no reservation. The 2026-11-08 power outage rebooted
+  # the SRX, which lost its lease table and handed .17 to the Samsung soundbar.
+  # Both then answered ARP for .17, HA's API connection landed on the
+  # soundbar, and the cover plus every BTHome sensor (this is the only BT
+  # proxy) went unavailable for four days.
+  #
+  # The SRX also carries a matching reservation, "garage-door", so the router
+  # config is the one list of who owns what. Keep the two in step.
   manual_ip:
-    static_ip: 192.168.15.17
+    static_ip: 192.168.15.236
     gateway: 192.168.15.1
     subnet: 255.255.255.0
     dns1: 192.168.15.1
