@@ -84,6 +84,13 @@ views:
               - entity: binary_sensor.front_left_motion_alarm
                 name: Motion
           - type: picture-glance
+            title: Garage left
+            camera_image: camera.garage_left_mainstream
+            camera_view: live
+            entities:
+              - entity: binary_sensor.garage_left_motion_alarm
+                name: Motion
+          - type: picture-glance
             title: Garage right
             camera_image: camera.garage_right_mainstream
             camera_view: live
@@ -130,6 +137,8 @@ views:
                 name: Front right cell motion
               - entity: binary_sensor.front_left_motion_alarm
                 name: Front left motion
+              - entity: binary_sensor.garage_left_motion_alarm
+                name: Garage left motion
               - entity: binary_sensor.garage_right_motion_alarm
                 name: Garage right motion
 
@@ -152,6 +161,8 @@ views:
                 name: Garage
               - entity: binary_sensor.front_left_motion_alarm
                 name: Front left
+              - entity: binary_sensor.garage_left_motion_alarm
+                name: Garage left
               - entity: binary_sensor.garage_right_motion_alarm
                 name: Garage right
 

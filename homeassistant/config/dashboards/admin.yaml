@@ -178,6 +178,8 @@ views:
                 name: Front left (.241) ge-0/0/8
               - entity: camera.front_right_mainstream
                 name: Front right (.242) ge-0/0/7
+              - entity: camera.garage_left_mainstream
+                name: Garage left (.243) ge-0/0/11
               - entity: camera.garage_right_mainstream
                 name: Garage right (.244) ge-0/0/9
               - entity: camera.back_yard_fluent
@@ -191,25 +193,40 @@ views:
             icon: mdi:alert
           - type: markdown
             content: >
-              **.243 Hikvision DS-2CD2732F-IS - alive but factory reset.**
-              It was believed dead (zero PoE on `ge-0/0/3` since ~June 2026).
-              It is now on sw01 `ge-0/0/11` (still labelled as the a40 BMC),
-              on the Hikvision default 192.168.1.64, unactivated. Found
-              2026-11-12. It cycles about every 5 min because sw01 cuts its
-              PoE: `show poe interface ge-0/0/11` reports "Static Mode
-              Exceeded Power Limit" at the 7.0 W class-2 cap. Raise the
-              port's PoE `maximum-power` first, then activate it (new admin
-              password through SADP or its web UI) and re-IP to .243.
+              **sw01 PoE is in STATIC mode (2026-11-14).** In the default
+              Class mode each port is capped at the class the device
+              advertises, and Junos ignores `maximum-power`. Both
+              DS-2CD2732F-IS cameras advertise class 2 (7.0 W), which is
+              their own rated peak during IR-cut switching. .243 was cut
+              every ~5 min ("Exceeded Power Limit"). Each port now has an
+              explicit cap: APs 22 W, .243 15.4 W, .244 12 W, Reolinks 13 W,
+              KEPLERs 10 W, 117.4 of 124 W. Cameras and ap001 are priority
+              high. PoE is off on the non-PD ports ge-0/0/0, 2, 3 and 6.
+              Adding a PoE device means giving its port a `maximum-power`
+              that fits the budget.
 
 
-              **Back Yard Reolink (.245) - recovered 2026-11-12.**
-              Dark from 2026-10-27 23:14Z (rack recabling) with sw01 PoE
-              stuck in "Detection In Progress", even across the 11-08 reboot.
-              Running `request diagnostics tdr start interface ge-0/0/4`
-              re-armed detection and it powered up within a minute. If it goes
-              dark with 0 W again, try that first. TDR read the data pairs as
-              normal and a "short" on spare pairs 4-5/7-8 at 26-28 m. That is
-              probably the camera's PoE input, not a fault.
+              **.243 "Garage Left" - restored 2026-11-14.** Not dead: it had
+              been factory reset (192.168.1.64, unactivated) on sw01
+              `ge-0/0/11`, which is still labelled as the a40 BMC. Activated
+              with the shared camera password. It was re-IP'd static to
+              .243, with streams, motion, image (180° flip) and overlays
+              matched to .244 over ISAPI. It is in HA (onvif) and Scrypted
+              ("Garage Left"). A storage tub on the shelf blocks the left half
+              of its view.
+
+
+              **Back Yard Reolink (.245).** It was dark 2026-10-27 to
+              2026-11-12 after the rack recabling, at 0 W in "Detection In
+              Progress" through two switch reboots. It came back at the
+              rack, 8 s before the TDR test, so the likely cause is a
+              loose or marginal patch lead on ge-0/0/4: reseat or replace it.
+              Separately, Scrypted (HomeKit) stayed broken after it came
+              back. The Rebroadcast plugin's RTMP connect hung during the
+              outage and never retried (prebuffer-mixin 0.10.70 bug). The fix
+              was restarting that plugin. If Rear Left or the Doorbell (also
+              RTMP) show "Snapshot Timed Out" in the Home app while HA is
+              fine, restart Rebroadcast.
 
 
               **MSB Meter (.228) - host was rewritten to 127.0.0.1.**

@@ -229,6 +229,11 @@ cards:
                   show_state: false
                   show_name: true
                 - type: picture-entity
+                  entity: camera.garage_left_mainstream
+                  camera_view: auto
+                  show_state: false
+                  show_name: true
+                - type: picture-entity
                   entity: camera.garage_right_mainstream
                   camera_view: auto
                   show_state: false
