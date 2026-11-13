@@ -222,11 +222,24 @@ views:
               rack, 8 s before the TDR test, so the likely cause is a
               loose or marginal patch lead on ge-0/0/4: reseat or replace it.
               Separately, Scrypted (HomeKit) stayed broken after it came
-              back. The Rebroadcast plugin's RTMP connect hung during the
-              outage and never retried (prebuffer-mixin 0.10.70 bug). The fix
-              was restarting that plugin. If Rear Left or the Doorbell (also
-              RTMP) show "Snapshot Timed Out" in the Home app while HA is
-              fine, restart Rebroadcast.
+              back. The Rebroadcast plugin's built-in RTMP client hung during
+              the outage and never retried (prebuffer-mixin 0.10.70 bug).
+              Since 2026-11-14 every RTMP stream on Rear Left and the Doorbell
+              uses the "FFmpeg (TCP)" parser, which always times out and
+              retries. If either still shows "Snapshot Timed Out" in the Home
+              app while HA is fine, restart the Rebroadcast plugin.
+
+
+              **Camera clocks and events (2026-11-14).** The Hikvisions use
+              timeZone `CST-10:00:00DST01:00:00,M10.1.0/02:00:00,M4.1.0/03:00:00`
+              (Sydney with DST) over NTP; they were fixed UTC+10. The
+              Reolinks were already right. HA's "Set system date and time"
+              buttons for them are disabled on purpose: pressing one switches
+              the camera to manual time with no DST rules. HA's ONVIF
+              webhooks are off on all four Hikvisions. These cameras send a
+              malformed HTTP request line that aiohttp rejects, which was
+              ~2 log errors/s (94% of HA's log). Every event already arrived
+              via PullPoint, which is now the only path.
 
 
               **MSB Meter (.228) - host was rewritten to 127.0.0.1.**

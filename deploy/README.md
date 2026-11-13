@@ -124,3 +124,16 @@ binding that is still live keeps getting ACKed at the old address.
 The server NAKs the client's INIT-REBOOT and offers the reservation, as seen in `srx-dhcp.log`.
 Changing the pool range drops every dynamic binding, but clients keep their address until
 renewal, so nothing breaks.
+
+## Log trimming (added 2026-11-14)
+
+Nothing rotated the mini's long-running logs. Scrypted's grew to 2.3 GB and
+held a camera password in cleartext, and mdns-reflect's reached 123 MB.
+`net.npratley.logtrim` (LaunchAgent, hourly; install with
+`deploy/install-logtrim.sh`) runs `logtrim.sh`. Once a listed log passes 100 MB
+it cuts the file back to its last 10 MB, drops `password=`/`Sending play
+command` lines and sets the file to mode 600. The writers are launchd
+StandardOut/ErrPath (O_APPEND), so truncating in place is safe. HA's own log
+is not listed: HA rotates it on every start. HA's log grew ~107 MB/day only
+because of the ONVIF webhook flood, and those webhooks are now off (see the
+Admin dashboard).
