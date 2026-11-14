@@ -50,6 +50,10 @@ template:
       # moment the door opens. Until the automation catches up, it falls back
       # to the position sensor's last_changed, which is "now".
       #
+      # The comparison must stay STRICT (o > c). New input_datetimes are not
+      # empty: both start at midnight on the day they are created. With >= the
+      # first-ever opening would read "open since midnight" and fire at once.
+      #
       # now() makes this re-render every minute, so a push can be up to ~1
       # min late. A change in zone.home re-renders it immediately. If everyone
       # leaves with the door already open 2+ min, the alert fires at once.
@@ -60,7 +64,7 @@ template:
           {% if is_state('binary_sensor.garage_door_position', 'on') %}
             {% set o = as_timestamp(states('input_datetime.garage_door_opened_at'), 0) %}
             {% set c = as_timestamp(states('input_datetime.garage_door_closed_at'), 0) %}
-            {% set since = o if (o > 0 and o >= c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
+            {% set since = o if (o > 0 and o > c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
             {% set mins = (now().timestamp() - since) / 60 %}
             {{ mins >= (2 if (states('zone.home') | int(1)) == 0 else 15) }}
           {% else %}
@@ -71,7 +75,7 @@ template:
             {% if is_state('binary_sensor.garage_door_position', 'on') %}
               {% set o = as_timestamp(states('input_datetime.garage_door_opened_at'), 0) %}
               {% set c = as_timestamp(states('input_datetime.garage_door_closed_at'), 0) %}
-              {% set since = o if (o > 0 and o >= c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
+              {% set since = o if (o > 0 and o > c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
               {{ ((now().timestamp() - since) / 60) | round(0) | int }}
             {% else %}
               0
