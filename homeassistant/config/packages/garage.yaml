@@ -32,3 +32,151 @@ template:
         availability: >
           {{ states('binary_sensor.garage_door') not in
              ['unknown', 'unavailable', 'none'] }}
+
+      # -----------------------------------------------------------------------
+      # Door LEFT open: on once it has been open 15 min, or 2 min when nobody
+      # is home (zone.home counts person.admin + person.elle_gallo). The alert
+      # below turns this into a push plus a reminder every 10 min.
+      #
+      # "Open since" comes from input_datetime.garage_door_opened_at, NOT this
+      # entity's last_changed. HA resets last_changed on every restart, and
+      # deploys restart HA often, which would restart the 15-min countdown
+      # each time. The laundry package learned the same lesson.
+      #
+      # The stored time is trusted only if it is newer than the last close
+      # (garage_door_closed_at). At the instant the door opens, this template
+      # renders BEFORE the recording automation has run, so opened_at still
+      # holds the PREVIOUS opening. Trusting it would make the alert fire the
+      # moment the door opens. Until the automation catches up, it falls back
+      # to the position sensor's last_changed, which is "now".
+      #
+      # now() makes this re-render every minute, so a push can be up to ~1
+      # min late. A change in zone.home re-renders it immediately. If everyone
+      # leaves with the door already open 2+ min, the alert fires at once.
+      - name: Garage door left open
+        unique_id: garage_door_left_open
+        icon: mdi:garage-alert
+        state: >
+          {% if is_state('binary_sensor.garage_door_position', 'on') %}
+            {% set o = as_timestamp(states('input_datetime.garage_door_opened_at'), 0) %}
+            {% set c = as_timestamp(states('input_datetime.garage_door_closed_at'), 0) %}
+            {% set since = o if (o > 0 and o >= c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
+            {% set mins = (now().timestamp() - since) / 60 %}
+            {{ mins >= (2 if (states('zone.home') | int(1)) == 0 else 15) }}
+          {% else %}
+            false
+          {% endif %}
+        attributes:
+          open_minutes: >
+            {% if is_state('binary_sensor.garage_door_position', 'on') %}
+              {% set o = as_timestamp(states('input_datetime.garage_door_opened_at'), 0) %}
+              {% set c = as_timestamp(states('input_datetime.garage_door_closed_at'), 0) %}
+              {% set since = o if (o > 0 and o >= c) else as_timestamp(states.binary_sensor.garage_door_position.last_changed) %}
+              {{ ((now().timestamp() - since) / 60) | round(0) | int }}
+            {% else %}
+              0
+            {% endif %}
+          nobody_home: "{{ (states('zone.home') | int(1)) == 0 }}"
+
+input_datetime:
+  garage_door_opened_at:
+    name: Garage door opened at
+    has_date: true
+    has_time: true
+  garage_door_closed_at:
+    name: Garage door closed at
+    has_date: true
+    has_time: true
+
+# ---------------------------------------------------------------------------
+# Left-open alert: push when binary_sensor.garage_door_left_open turns on,
+# then every 10 min until it clears. Turning alert.garage_door_left_open off in
+# HA acknowledges it (no more reminders until the door next closes).
+#
+# Goes to both phones, like the laundry alerts. iOS "time-sensitive" level, so
+# it breaks through Focus modes. The shared tag means each reminder REPLACES
+# the last on the lock screen instead of stacking.
+#
+# On HA start the alert re-evaluates. A door still open across a restart or
+# deploy therefore pushes once more straight away, then every 10 min as before.
+# ---------------------------------------------------------------------------
+alert:
+  garage_door_left_open:
+    name: Garage door left open
+    entity_id: binary_sensor.garage_door_left_open
+    state: "on"
+    repeat: 10
+    can_acknowledge: true
+    skip_first: false
+    title: "Garage door open"
+    message: >-
+      Open {{ state_attr('binary_sensor.garage_door_left_open', 'open_minutes') }} min
+      {%- if state_attr('binary_sensor.garage_door_left_open', 'nobody_home') %} and nobody is home{% endif %}.
+    notifiers:
+      - mobile_app_nicks_iphone
+      - mobile_app_iphone
+    data:
+      tag: garage_door_open
+      group: garage
+      push:
+        interruption-level: time-sensitive
+
+automation:
+  - id: garage_door_record_open_close
+    alias: "Garage: record when the door opens and closes"
+    mode: queued
+    # from/to are pinned to off<->on so a sensor dropout (unavailable -> on)
+    # does not restart the clock on a door that has been open all along.
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.garage_door_position
+        from: "off"
+        to: "on"
+        id: opened
+      - trigger: state
+        entity_id: binary_sensor.garage_door_position
+        from: "on"
+        to: "off"
+        id: closed
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: >-
+            {{ 'input_datetime.garage_door_opened_at' if trigger.id == 'opened'
+               else 'input_datetime.garage_door_closed_at' }}
+        data:
+          timestamp: "{{ as_timestamp(trigger.to_state.last_changed) }}"
+
+  # The alert's own done_message is deliberately NOT used. The alert also
+  # clears when someone ARRIVES home with the door open under 15 min, and
+  # "closed" would then be a lie. So confirm only when it cleared AND the door
+  # really is shut. Same tag, so it replaces the "open" push.
+  - id: garage_door_closed_after_alert
+    alias: "Garage: door closed after a left-open alert"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: alert.garage_door_left_open
+        from: ["on", "off"]
+        to: "idle"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.garage_door_position
+        state: "off"
+    actions:
+      - variables:
+          msg: "Closed at {{ now().strftime('%H:%M') }}."
+      - action: notify.mobile_app_nicks_iphone
+        data:
+          title: "Garage door closed"
+          message: "{{ msg }}"
+          data:
+            tag: garage_door_open
+            group: garage
+      - action: notify.mobile_app_iphone
+        data:
+          title: "Garage door closed"
+          message: "{{ msg }}"
+          data:
+            tag: garage_door_open
+            group: garage
